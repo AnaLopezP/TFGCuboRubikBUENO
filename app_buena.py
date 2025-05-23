@@ -409,7 +409,6 @@ class SolutionWidget(QWidget):
 
             
     def nextStep(self):
-        print("Ha habido flip?", self.flip_shown)
         # --- Paso 0: flip inicial ---
         if not self.flip_shown:
             orb = Orbitas(self.movimiento_origen)
@@ -484,7 +483,6 @@ class SolutionWidget(QWidget):
             self.updateStep()
             
         # --- 3) Flip final (devuelve la pieza a la mala órbita) ---
-        print("Ha habido flip final?", self.flip_end_shown)
         if self.flip_shown and not self.flip_end_shown and self.current_step >= len(self.secuencia_movimientos):
             orb = Orbitas(self.movimiento_origen)
 
