@@ -233,10 +233,8 @@ def traducir_a_cubo(movimiento, cube_state):
     for orig in [1, 2, 3, 4]:
         # Obtenemos la posición destino para la arista que viene de la posición original "orig"
         new_pos = edge_perm_mapping[edge_perm[orig]]
-        print(f"Arista {orig} -> nueva posición: {new_pos}")
         # La orientación se determina para la posición destino (índice new_pos-1)
         orient = orient_edges[new_pos - 1]
-        print(f"Orientación de la arista {orig} en la nueva posición: {orient}")
         
         # Consultamos las posiciones en la net destino:
         pos_white = net_aristas_blanca[new_pos]     # Ubicación en la cara blanca
@@ -264,16 +262,11 @@ def traducir_a_cubo(movimiento, cube_state):
     # --- Procesar esquinas ---
     for orig in [1, 2, 3, 4]:
         new_pos = corner_perm_mapping[corner_perm[orig]]
-        print(f"Esquina {orig} -> nueva posición: {new_pos}")
         orient = orient_corners[new_pos - 1]
-        print(f"Orientación de la esquina {orig} en la nueva posición: {orient}")
         
         pos_white = net_esquinas_blanca[new_pos]
-        print(f"Posición blanca: {pos_white}")
         net_face1, pos1 = net_esquinas_lateral1[new_pos]
-        print(f"Posición lateral1: {net_face1}, {pos1}, color: {corner_colors[orig][0]}")
         net_face2, pos2 = net_esquinas_lateral2[new_pos]
-        print(f"Posición lateral2: {net_face2}, {pos2}, color: {corner_colors[orig][1]}")
         
         # Los colores laterales originales de la pieza (dependen de la posición original de la esquina)
         inherent_face1, inherent_face2 = corner_colors[orig]
