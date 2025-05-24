@@ -712,16 +712,16 @@ class MainWidget(QWidget):
                 if count != 9:
                     raise ValueError(t('only_9', self.lang))
 
-            # 3) Sincronizar colores al modelo molecular
+            # 3) Sincronizar colores al modelo molecular y traducimos a movimiento
             asignar_color_deuna(self.cubo)
-
-            # 4) Obtener representación de movimiento y buscar nodo en el grafo
             movimiento = traducir_a_mov(self.cubo)
-            numero_mov = buscar_nodo(movimiento)
-            escenarios = [] # guarda todas las soluciones de las órbitas
 
-            if numero_mov is None:
-                orb = Orbitas(movimiento)
+            # 4) Comprobamos las restricciones del cubo
+            orb = Orbitas(movimiento)
+            restriccion_mod2 = orb.comprobar_restriccion_mod2()
+            restriccion_mod3 = orb.comprobar_restriccion_mod3()
+            restriccion_perm = orb.comprobar_restriccion_perm()
+            if not restriccion_mod2 or not restriccion_mod3 or not restriccion_perm:
                 
                 # --- Caso “otra órbita” ---
                 self.mostrarMensaje(t('not_found', self.lang))
@@ -734,117 +734,65 @@ class MainWidget(QWidget):
                 corregir = msgBox.addButton(t('correct_cube', self.lang),    QMessageBox.ButtonRole.RejectRole)
                 msgBox.setDefaultButton(corregir)
                 msgBox.exec()
-
+                
                 if msgBox.clickedButton() == aceptar:
+                    nuevo_movimiento = movimiento.copy()
+                    piezas_cambiadas = []
+                    piezas_transmutadas = []
+                    sentido = None
                     
-                    # ---- ARISTAS (mod-2) ----
-                    if not orb.comprobar_restriccion_mod2():
-                        orient2 = orb.opciones_mod2_correcto()  
-                        movs2 = orb.movimientos_opciones()             
-
-                        # Preguntar al usuario si sabe qué arista flippeó:
-                        etiquetas2 = [
-                            f"{i+1}: {orb.buscar_color_por_posicion_arista(o, self.cubo)}"
-                            for i,o in enumerate(orient2)
-                        ] + [t('dontknow', self.lang)]
+                    if not restriccion_mod2:
+                        orient2_buenas = orb.opciones_mod2_correcto()
+                        orient2_elegida = random.choice(orient2_buenas)
+                        nuevo_movimiento[1] = orient2_elegida
                         
-                        elegido2, ok2 = QInputDialog.getItem(
-                            self,
-                            t('arista_flipped', self.lang),
-                            t('choose_arista_flipped', self.lang),
-                            etiquetas2,
-                            0, False
-                        )
-                        if ok2 and elegido2 != t('dontknow', self.lang):
-                            idx2 = int(elegido2.split(":")[0]) - 1
-                        else:
-                            # “No sé cuál” → elijo aleatoriamente
-                            idx2 = random.randrange(len(orient2))
-                            self.mostrarMensaje(
-                                t('random_solution', self.lang)
-                            )
-                            
-                        sel_mov2 = movs2[idx2]
-                        sel_ori2 = orient2[idx2]
-                        seq2, hist2 = buscar_identidad(buscar_nodo(sel_mov2))
-                        col2 = orb.buscar_color_por_posicion_arista(sel_ori2, self.cubo)
-                        sentido = None # las aristas no tienen sentido
-                        escenarios.append((seq2, hist2, col2, sel_mov2, sentido))
-
-                    # -----ESQUINAS (mod-3) -----
-                    if not orb.comprobar_restriccion_mod3():
-                        orient3 = orb.opciones_mod3_correcto()  
-                        movs3   = orb.movimientos_opciones_esquinas() 
-
-                        etiquetas3 = [
-                                f"{i+1}: {orb.buscar_color_por_posicion_esquina(o3, self.cubo)}"
-                                for i, o3 in enumerate(orient3)
-                            ] + [t('dontknow')]
+                        color2 = orb.buscar_color_por_posicion_arista(orient2_elegida, self.cubo)
+                        piezas_cambiadas.append(color2)
                         
-                        elegido3, ok3 = QInputDialog.getItem(
-                                self, t('esquina_flipped', self.lang),
-                                t('choose_esquina_flipped', self.lang),
-                                etiquetas3, 0, False
-                            )
-
-                        if ok3 and elegido3 != t('dontknow', self.lang):
-                            idx3 = int(elegido3.split(":")[0]) - 1
-                        else:
-                            idx3 = random.randrange(len(orient3))
-                            self.mostrarMensaje(
-                                t('random_solution_esquina', self.lang)
-                            )
-                            
-                        sel_mov3 = movs3[idx3]
-                        sel_ori3 = orient3[idx3]
+                    if not restriccion_mod3:
+                        orient3_buenas = orb.opciones_mod3_correcto()
+                        orient3_elegida = random.choice(orient3_buenas)
+                        nuevo_movimiento[3] = orient3_elegida
+                        
                         # definimos el sentido de giro
-                        orient_original = movimiento[3][idx3]
-                        orient_nueva = sel_ori3[idx3]
+                        for i in range(len(orient3_elegida)):
+                            if movimiento[3][i] != orient3_elegida[i]:
+                                indice_distinto = i
+                        orient_original = movimiento[3][indice_distinto]
+                        orient_nueva = orient3_elegida[indice_distinto]
                         cuanto_gira = (orient_nueva - orient_original) % 3
-                        print(f"cuanto_gira: {cuanto_gira}")    
                         if cuanto_gira == 1:
                             sentido = 1
                         elif cuanto_gira == 2:
                             sentido = 2
                         else:
-                            sentido = None                        
-                        seq3, hist3 = buscar_identidad(buscar_nodo(sel_mov3))
-                        col3 = orb.buscar_color_por_posicion_esquina(sel_ori3, self.cubo)
-                        escenarios.append((seq3, hist3, col3, sel_mov3, sentido))
-
-            else:
-                # --- Caso canónico sin flips ---
-                mov_can = grafo.nodos[numero_mov].movimiento
-                seq_can, hist_can = buscar_identidad(numero_mov)
-                sentido = None # no se ha flippeado nada
-                escenarios = [(seq_can, hist_can, None, mov_can, sentido)]
-
-            if escenarios:
-                seq, hist, pieza, mov_orig, sentido = escenarios[0]
-                self.solutionWidget = SolutionWidget(
-                    secuencia_movimientos=seq,
-                    historial=hist,
-                    piecita_cambiada=pieza,
-                    sentido=sentido,
-                    cubo_modelo=self.cubo,
-                    movimiento_origen=mov_orig,
-                    lang=self.lang
-                )
-                self.stacked.addWidget(self.solutionWidget)
-                self.stacked.setCurrentWidget(self.solutionWidget)
-
-                # desactivar botones inferiores
-                for btn in (self.toggleBtn, self.shuffleBtn,
-                            self.reiniciarBtn, self.solucionarBtn):
-                    btn.setEnabled(False)
-
-                
+                            sentido = None
+                        
+                        color3 = orb.buscar_color_por_posicion_esquina(orient3_elegida, self.cubo)
+                        piezas_cambiadas.append(color3)
+                              
+                    if not restriccion_perm:
+                        # elegimos si permutar dos aristas o dos esquinas
+                        eleccion = random.choice([0, 2])
+                        nueva_perm = orb.cambiar_paridad(eleccion)
+                        nuevo_movimiento[eleccion] = nueva_perm
+                        # CONTINUAR PR AQUI, HAY QUE DEFINIR EN LA MATRIZ CUBO QUE DOS PIEZAS SE INTERCAMBIAN
+                        
+                    
+                    self.mostrarMensaje(t('random_solution', self.lang))
+                    secuencia, historial = buscar_identidad(buscar_nodo(nuevo_movimiento))
+                    self.solutionWidget = SolutionWidget(
+                        secuencia_movimientos=secuencia,
+                        historial=historial,
+                        
+                    
+                    
+                    
+                        
+                            
             
-        except Exception as e:
-            traceback.print_exc()
-            self.mostrarMensaje(f"Error al resolver: {e.__class__.__name__}: {e}")
-            return None
-
+            
+                
 class MainMenuWidget(QWidget):
     def __init__(self, lang, main_container):
         super().__init__()
