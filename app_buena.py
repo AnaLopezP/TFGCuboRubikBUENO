@@ -776,7 +776,10 @@ class MainWidget(QWidget):
                         eleccion = random.choice([0, 2])
                         nueva_perm = orb.cambiar_paridad(eleccion)
                         nuevo_movimiento[eleccion] = nueva_perm
-                        # CONTINUAR PR AQUI, HAY QUE DEFINIR EN LA MATRIZ CUBO QUE DOS PIEZAS SE INTERCAMBIAN
+                        if eleccion == 0:
+                            piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
+                        else:
+                            piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
                         
                     
                     self.mostrarMensaje(t('random_solution', self.lang))
@@ -784,14 +787,47 @@ class MainWidget(QWidget):
                     self.solutionWidget = SolutionWidget(
                         secuencia_movimientos=secuencia,
                         historial=historial,
-                        
-                    
-                    
-                    
-                        
-                            
+                        piecita_cambiada=piezas_cambiadas,
+                        piezas_transmutadas=piezas_transmutadas,
+                        sentido=sentido,
+                        cubo_modelo=self.cubo,
+                        movimiento_origen=movimiento,
+                        lang=self.lang
+                    )
+                    self.stacked.addWidget(self.solutionWidget)
+                    self.stacked.setCurrentWidget(self.solutionWidget)
+
+                    # desactivar botones inferiores
+                    for btn in (self.toggleBtn, self.shuffleBtn,
+                                self.reiniciarBtn, self.solucionarBtn):
+                        btn.setEnabled(False)
             
-            
+            else:
+                # --- Caso canónico sin flips ---
+                secuencia, historial = buscar_identidad(buscar_nodo(movimiento))
+                self.solutionWidget = SolutionWidget(
+                    secuencia_movimientos=secuencia,
+                    historial=historial,
+                    piecita_cambiada=None,
+                    piezas_transmutadas=None,
+                    sentido=None,
+                    cubo_modelo=self.cubo,
+                    movimiento_origen=movimiento,
+                    lang=self.lang
+                )
+                self.stacked.addWidget(self.solutionWidget)
+                self.stacked.setCurrentWidget(self.solutionWidget)
+
+                # desactivar botones inferiores
+                for btn in (self.toggleBtn, self.shuffleBtn,
+                            self.reiniciarBtn, self.solucionarBtn):
+                    btn.setEnabled(False)
+                    
+        except Exception as e:
+            traceback.print_exc()
+            self.mostrarMensaje(f"Error al resolver: {e.__class__.__name__}: {e}")
+            return None
+                      
                 
 class MainMenuWidget(QWidget):
     def __init__(self, lang, main_container):

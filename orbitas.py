@@ -243,4 +243,28 @@ class Orbitas:
             return self.perm2
         else:
             print("Elección no válida. Debe ser 1 o 2.")
+            
+    def buscar_casillas_intercambiadas(self, permutacion_nueva, cubo, eleccion):
+        """
+        Busca las aristas que han sido intercambiadas en la nueva permutación.
+        Devuelve una lista de colores de las aristas que han cambiado.
+        """
+        colores_intercambiados = []
+        # siempre cambiamos las mismas casillas, no hace falta el for
+        if eleccion == 0:
+            if self.perm1[0] != permutacion_nueva[0] and self.perm1[1] != permutacion_nueva[1]:
+                return [[cubo[0][1].color, cubo[0][1].adyacente.color],
+                        [cubo[1][0].color, cubo[1][0].adyacente.color]]
+            else: 
+                print("No se han intercambiado las aristas 1 y 2")
+                return None
+        elif eleccion == 2:
+            if self.perm2[0] != permutacion_nueva[0] and self.perm2[1] != permutacion_nueva[1]:
+                return [[cubo[0][0].color, cubo[0][0].adyacente.color, cubo[0][0].precedente.color],
+                        [cubo[2][0].color, cubo[2][0].adyacente.color, cubo[2][0].precedente.color]]
+            else:
+                print("No se han intercambiado las esquinas 1 y 2")
+                return None
+                
+        return colores_intercambiados
         
