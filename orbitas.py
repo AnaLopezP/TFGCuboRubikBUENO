@@ -162,9 +162,8 @@ class Orbitas:
     
     def transposiciones(self, perm):
         num_transposiciones = 0
-        for i in range(len(perm)):
-            if perm[i] > perm[i + 1]:
-                print(f"Transposición entre {perm[i]} y {perm[i + 1]}")
+        for i in range(len(perm)-1):
+            if perm[i+1] > perm[i + 2]:
                 num_transposiciones += 1
         return num_transposiciones
     
@@ -267,4 +266,3 @@ class Orbitas:
                 return None
                 
         return colores_intercambiados
-        
