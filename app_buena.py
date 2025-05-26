@@ -432,7 +432,8 @@ class SolutionWidget(QWidget):
             # --- Caso aristas ---
             if count == 2:
                # 1) busco que colores están en las posiciones (0, 1) y (1, 0) de la matriz cubo
-               colores1 = [lores2 = [self.cubo[1][0].color, self.cubo[1][0].adyacente.color]
+               colores1 = [self.cubo[0][1].color, self.cubo[0][1].adyacente.color]
+               lores2 = [self.cubo[1][0].color, self.cubo[1][0].adyacente.color]
                
             
     def nextStep(self):
