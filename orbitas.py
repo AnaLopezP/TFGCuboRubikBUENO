@@ -11,6 +11,7 @@ class Orbitas:
     def comprobar_restriccion_mod2(self):
         if sum(self.orientaciones_mod2) % 2 != 0:
             # no está en la órbita debido a una arista
+            print("Restricción de mod2 no cumplida")
             return False
         else:
             return True
@@ -84,7 +85,12 @@ class Orbitas:
     
     # Esquinas: comprobación suma mod-3
     def comprobar_restriccion_mod3(self):
-        return sum(self.orientaciones_mod3) % 3 == 0
+        if sum(self.orientaciones_mod3) % 3 != 0:
+            # no está en la órbita debido a una esquina
+            print("Restricción de mod3 no cumplida")
+            return False
+        else:
+            return True
 
     # Generar las 4 opciones cambiando UNA esquina a cada valor distinto
     def opciones_mod3_correcto(self):
@@ -161,10 +167,13 @@ class Orbitas:
         return self.flippear_esquina(cubo, posicion, sentido=inverso)
     
     def transposiciones(self, perm):
+        valores = [perm[k] for k in perm]
         num_transposiciones = 0
-        for i in range(len(perm)-1):
-            if perm[i+1] > perm[i + 2]:
-                num_transposiciones += 1
+        n = len(valores)
+        for i in range(n):
+            for j in range(i + 1, n):
+                if valores[i] > valores[j]:
+                    num_transposiciones += 1
         return num_transposiciones
     
     def comprobar_restriccion_perm(self):
@@ -234,14 +243,16 @@ class Orbitas:
         # coje una de las permutaciones e intercambia dos valores de la permutación para cambiar la paridad
         if eleccion == 0:
             # intercambiamos los dos primeros valores de la permutación 1
-            self.perm1[0], self.perm1[1] = self.perm1[1], self.perm1[0]
-            return self.perm1
+            nueva = self.perm1.copy()
+            nueva[1], nueva[2] = self.perm1[2], self.perm1[1]
+            return nueva
         elif eleccion == 2:
             # intercambiamos los dos primeros valores de la permutación 2
-            self.perm2[0], self.perm2[1] = self.perm2[1], self.perm2[0]
-            return self.perm2
+            nueva = self.perm2.copy()
+            nueva[1], nueva[2] = self.perm2[2], self.perm2[1]
+            return nueva
         else:
-            print("Elección no válida. Debe ser 1 o 2.")
+            print("Elección no válida. Debe ser 0 o 2.")
             
     def buscar_casillas_intercambiadas(self, permutacion_nueva, cubo, eleccion):
         """
@@ -251,14 +262,14 @@ class Orbitas:
         colores_intercambiados = []
         # siempre cambiamos las mismas casillas, no hace falta el for
         if eleccion == 0:
-            if self.perm1[0] != permutacion_nueva[0] and self.perm1[1] != permutacion_nueva[1]:
+            if self.perm1[1] != permutacion_nueva[1] and self.perm1[2] != permutacion_nueva[2]:
                 return [[cubo[0][1].color, cubo[0][1].adyacente.color],
                         [cubo[1][0].color, cubo[1][0].adyacente.color]]
             else: 
                 print("No se han intercambiado las aristas 1 y 2")
                 return None
         elif eleccion == 2:
-            if self.perm2[0] != permutacion_nueva[0] and self.perm2[1] != permutacion_nueva[1]:
+            if self.perm2[1] != permutacion_nueva[1] and self.perm2[2] != permutacion_nueva[2]:
                 return [[cubo[0][0].color, cubo[0][0].adyacente.color, cubo[0][0].precedente.color],
                         [cubo[2][0].color, cubo[2][0].adyacente.color, cubo[2][0].precedente.color]]
             else:
@@ -266,3 +277,5 @@ class Orbitas:
                 return None
                 
         return colores_intercambiados
+
+    

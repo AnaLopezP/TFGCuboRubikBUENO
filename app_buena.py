@@ -290,7 +290,9 @@ class SolutionWidget(QWidget):
         # Estados de vista
         self.showingFullCube = False
         self.flip_shown = (piecita_cambiada is None)
+        self.trans_shown = (piezas_transmutadas is None)
         self.flip_end_shown = False
+        self.trans_end_shown = False
         self.current_step = 0
 
         # Datos del algoritmo
@@ -365,97 +367,67 @@ class SolutionWidget(QWidget):
         # Toggle view button remains an icon or arrows
 
     def updateStep(self):
-        total = len(self.secuencia_movimientos) + 2
-        # --- Si no hay pieza desorientada (órbita canónica), vamos directo a movimientos canónicos ---
-        if self.piecita_cambiada is None:
-            total = len(self.secuencia_movimientos)
-            # Muestra el primer movimiento canónico
-            if self.current_step < len(self.secuencia_movimientos):
-                mov = self.secuencia_movimientos[self.current_step]
-                texto = t(f"{mov}", self.lang)
-                self.instructionsText.setPlainText(
-                    f"{t('step', self.lang)} {self.current_step+1}/{total}:\n{texto}"
-                )
-            else:
-                self.instructionsText.setPlainText(t('solution_complete', self.lang))
-                self.nextStepBtn.setEnabled(False)
-            return
-
-        # --- Paso 0: flip inicial ---
-        if not self.flip_shown:
-            self.instructionsText.setPlainText(
-                f"{t('step', self.lang)} 0/{total}:\n{t('arista_flipped', self.lang)}"
-            )
-            return
-
-        # --- Paso final: flip de vuelta ---
-        if self.flip_shown and not self.flip_end_shown and self.current_step >= len(self.secuencia_movimientos):
-            paso = len(self.secuencia_movimientos) + 1
-            self.instructionsText.setPlainText(
-                f"{t('step', self.lang)} {paso}/{total}:\n{t('arista_flipped', self.lang)}"
-            )
-            return
-
-        # --- Pasos intermedios canónicos ---
-        idx = self.current_step
-        if idx < len(self.secuencia_movimientos):
-            mov = self.secuencia_movimientos[idx]
+        """
+        Muestra únicamente los pasos canónicos (sin flips iniciales ni finales).
+        """
+        total = len(self.secuencia_movimientos)
+        # Si queda movimiento, mostramos instrucción de ese paso
+        if self.current_step < total:
+            mov = self.secuencia_movimientos[self.current_step]
             texto = t(f"{mov}", self.lang)
             self.instructionsText.setPlainText(
-                f"{t('step', self.lang)} {idx+1}/{total}:\n{texto}"
+                f"{t('step', self.lang)} {self.current_step+1}/{total}:\n{texto}"
             )
         else:
             self.instructionsText.setPlainText(t('solution_complete', self.lang))
             self.nextStepBtn.setEnabled(False)
 
             
-    def nextStep(self):
-        # --- Paso 0: flip inicial ---
-        if not self.flip_shown:
-            orb = Orbitas(self.movimiento_origen)
-
-            if isinstance(self.piecita_cambiada, (list, tuple)):
-                for casilla in self.piecita_cambiada:
-                    if len(casilla) == 2:
-                        # es una arista
-                        pieza = orb.buscar_posicion_por_color_arista(self.cubo,
-                                                                    self.piecita_cambiada)
-                        i,j   = pieza.fila, pieza.columna
-                        ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
+    def aplicar_errores(self):
+        asignar_color_deuna(self.cubo)
+        orb = Orbitas(self.movimiento_origen)
+        # --- Flip de la pieza cambiada ---
+        if self.piecita_cambiada is not None:
+            print("Piezas flippeadas:", self.piecita_cambiada)
+            for casilla in range(len(self.piecita_cambiada)):
+                colores = self.piecita_cambiada[casilla]
+                if len(colores) == 2:
+                    # Arista
+                    pieza = orb.buscar_posicion_por_color_arista(self.cubo, colores)
+                    if pieza:
+                        i, j = pieza.fila, pieza.columna
+                        ia, ja = pieza.adyacente.fila, pieza.adyacente.columna
                         cara0, cara1 = pieza.cara, pieza.adyacente.cara
                         c0 = cube_state[cara0][i][j]
                         c1 = cube_state[cara1][ia][ja]
-                            
-                        if self.sentido == None:
-                            cube_state[cara0][i][j] = c1
+                        cube_state[cara0][i][j] = c1
+                        cube_state[cara1][ia][ja] = c0
+                        orb.flippear_arista(self.cubo, (i, j))
+                else:
+                    # Esquina
+                    pieza = orb.buscar_posicion_por_color_esquina(self.cubo, colores)
+                    if pieza:
+                        i, j = pieza.fila, pieza.columna
+                        ia, ja = pieza.adyacente.fila, pieza.adyacente.columna
+                        ip, jp = pieza.precedente.fila, pieza.precedente.columna
+                        cara0, cara1, cara2 = pieza.cara, pieza.adyacente.cara, pieza.precedente.cara
+                        c0 = cube_state[cara0][i][j]
+                        c1 = cube_state[cara1][ia][ja]
+                        c2 = cube_state[cara2][ip][jp]
+                        if self.sentido == 1:
+                            cube_state[cara0][i][j] = c2
                             cube_state[cara1][ia][ja] = c0
-                            orb.flippear_arista(self.cubo, (i,j))
-                    
-                        else:
-                            # es una esquina (longitud==3)
-                            pieza = orb.buscar_posicion_por_color_esquina(self.cubo,
-                                                                        self.piecita_cambiada)
-                            i,j   = pieza.fila, pieza.columna
-                            ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
-                            ip,jp = pieza.precedente.fila, pieza.precedente.columna
-                            cara0, cara1, cara2 = pieza.cara, pieza.adyacente.cara, pieza.precedente.cara
-                            c0 = cube_state[cara0][i][j]
-                            c1 = cube_state[cara1][ia][ja]
-                            c2 = cube_state[cara2][ip][jp]
-                                
-                            if self.sentido == 1: # ha girado a la izquierda
-                                cube_state[cara0][i][j] = c2
-                                cube_state[cara1][ia][ja] = c0
-                                cube_state[cara2][ip][jp] = c1
-                                orb.flippear_esquina(self.cubo, (i,j), self.sentido)
-                                
-                            elif self.sentido == 2: # ha girado a la derecha
-                                cube_state[cara0][i][j] = c1
-                                cube_state[cara1][ia][ja] = c2
-                                cube_state[cara2][ip][jp] = c0
-                                orb.flippear_esquina(self.cubo, (i,j), self.sentido)
-                                
-            if isinstance(self.piezas_transmutadas, (list, tuple)):
+                            cube_state[cara2][ip][jp] = c1
+                            orb.flippear_esquina(self.cubo, (i, j), self.sentido)
+                        elif self.sentido == 2:
+                            cube_state[cara0][i][j] = c1
+                            cube_state[cara1][ia][ja] = c2
+                            cube_state[cara2][ip][jp] = c0
+                            orb.flippear_esquina(self.cubo, (i, j), self.sentido)
+                            
+        # --- Transmutación de piezas ---
+        if self.piezas_transmutadas is not None:
+                print("Piezas transmutadas:", self.piezas_transmutadas)
                 if len(self.piezas_transmutadas[0]) == 2:
                     # se han intrercambiado dos aristas
                     # cambiamos la matriz cubo
@@ -507,85 +479,31 @@ class SolutionWidget(QWidget):
                     cube_state[cara2][i2][j2] = cs1
                     cube_state[cara2a][ia2][ja2] = cs1a
                     cube_state[cara2p][ip2][jp2] = cs1p
-                    
 
-            if pieza:
-                asignar_color_deuna(self.cubo)
-                self.cube3DView.update()
-                self.parent().parent().get_cubenet().drawNet()
-
-            self.flip_shown = True
-            self.updateStep()
-            return
-
-        # ------------------------------------------------
-        # 1) Pasos canónicos: aplicar uno por uno
-        # ------------------------------------------------
+            
+    def nextStep(self):
         if self.current_step < len(self.secuencia_movimientos):
             num_mov = self.historial[self.current_step]
             mov = grafo.nodos[num_mov].movimiento
-            # 2.1) Aplica el giro al cube_state (estado canónico)
+            
+            #aplicar el giro canon
             traducir_a_cubo(mov, cube_state)
-            # 2.2) Repinta el modelo molecular
             asignar_color_deuna(self.cubo)
-            # 2.3) Actualiza vistas
+            
+            # aplicamos los errores de la órbita
+            self.aplicar_errores()
+            
+            # Actualizar la vista 3D
+            asignar_color_deuna(self.cubo)
             self.cube3DView.update()
             self.parent().parent().get_cubenet().drawNet()
-            # 2.4) Avanza contador y refresca texto
+            
+            # avanzar al siguiente paso
             self.current_step += 1
             self.updateStep()
             return
         else:
-            # Ya no hay más movimientos
             self.updateStep()
-            
-        # --- 3) Flip final (devuelve la pieza a la mala órbita) ---
-        if self.flip_shown and not self.flip_end_shown and self.current_step >= len(self.secuencia_movimientos):
-            orb = Orbitas(self.movimiento_origen)
-
-            # Si es arista (2 colores)
-            if isinstance(self.piecita_cambiada, (list, tuple)) and len(self.piecita_cambiada) == 2:
-                pieza = orb.buscar_posicion_por_color_arista(self.cubo, self.piecita_cambiada)
-                if pieza:
-                    i,j = pieza.fila, pieza.columna
-                    cs1 = cube_state[pieza.cara]
-                    cs2 = cube_state[pieza.adyacente.cara]
-                    ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
-                    cs1[i][j], cs2[ia][ja] = cs2[ia][ja], cs1[i][j]
-                    orb.flippear_arista(self.cubo, (i,j))
-
-            # Si es esquina (3 colores)
-            else:
-                pieza = orb.buscar_posicion_por_color_esquina(self.cubo, self.piecita_cambiada)
-                if pieza:
-                    i,j   = pieza.fila, pieza.columna
-                    ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
-                    ip,jp = pieza.precedente.fila, pieza.precedente.columna
-                    cara0, cara1, cara2 = pieza.cara, pieza.adyacente.cara, pieza.precedente.cara
-                    c0 = cube_state[cara0][i][j]
-                    c1 = cube_state[cara1][ia][ja]
-                    c2 = cube_state[cara2][ip][jp]
-                        
-                    if self.sentido == 1: # ha girado a la izquierda, para volver tengo que girar a la derecha
-                        cube_state[cara0][i][j] = c1
-                        cube_state[cara1][ia][ja] = c2
-                        cube_state[cara2][ip][jp] = c0
-                        orb.restaurar_esquina(self.cubo, (i,j), self.sentido)
-                        
-                    elif self.sentido == 2: # ha girado a la derecha, para volver tengo que girar a la izquierda
-                        cube_state[cara0][i][j] = c2
-                        cube_state[cara1][ia][ja] = c0
-                        cube_state[cara2][ip][jp] = c1
-                        orb.restaurar_esquina(self.cubo, (i,j), self.sentido)
-                        
-
-            asignar_color_deuna(self.cubo)
-            self.cube3DView.update()
-            self.parent().parent().get_cubenet().drawNet()
-
-            self.flip_end_shown = True
-            self.updateStep()
-            return
 
     def volverMenu(self):
         parent = self.parent()
@@ -778,6 +696,15 @@ class MainWidget(QWidget):
             restriccion_mod2 = orb.comprobar_restriccion_mod2()
             restriccion_mod3 = orb.comprobar_restriccion_mod3()
             restriccion_perm = orb.comprobar_restriccion_perm()
+            piezas_cambiadas = None
+            piezas_transmutadas = None
+            
+            if not restriccion_mod2 or not restriccion_mod3:
+                piezas_cambiadas = []
+            
+            if not restriccion_perm:
+                piezas_transmutadas = []
+            
             if not restriccion_mod2 or not restriccion_mod3 or not restriccion_perm:
                 
                 # --- Caso “otra órbita” ---
@@ -794,8 +721,6 @@ class MainWidget(QWidget):
                 
                 if msgBox.clickedButton() == aceptar:
                     nuevo_movimiento = movimiento.copy()
-                    piezas_cambiadas = []
-                    piezas_transmutadas = []
                     sentido = None
                     
                     if not restriccion_mod2:
@@ -829,6 +754,7 @@ class MainWidget(QWidget):
                         piezas_cambiadas.append(color3)
                               
                     if not restriccion_perm:
+                        
                         # elegimos si permutar dos aristas o dos esquinas
                         eleccion = random.choice([0, 2])
                         nueva_perm = orb.cambiar_paridad(eleccion)
@@ -879,7 +805,8 @@ class MainWidget(QWidget):
                 for btn in (self.toggleBtn, self.shuffleBtn,
                             self.reiniciarBtn, self.solucionarBtn):
                     btn.setEnabled(False)
-                    
+           
+                 
         except Exception as e:
             traceback.print_exc()
             self.mostrarMensaje(f"Error al resolver: {e.__class__.__name__}: {e}")
