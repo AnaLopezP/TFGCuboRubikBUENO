@@ -277,5 +277,3 @@ class Orbitas:
                 return None
                 
         return colores_intercambiados
-
-    
