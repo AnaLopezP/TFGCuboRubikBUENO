@@ -246,8 +246,8 @@ class Orbitas:
         # stickers: (objeto, atributo) de los 3 stickers de cada esquina
         stickers1 = [
             (pieza1, 'color'),
-            (pieza1.adyacente, 'color'),
             (pieza1.precedente, 'color'),
+            (pieza1.adyacente, 'color'),
         ]
         stickers2 = [
             (pieza2, 'color'),
@@ -334,7 +334,7 @@ class Orbitas:
 
             if original_k1 != nueva_k1 or original_k2 != nueva_k2:
                 return [[cubo[0][0].color, cubo[0][0].adyacente.color, cubo[0][0].precedente.color],
-                        [cubo[0][2].color, cubo[0][2].adyacente.color, cubo[0][2].precedente.color]]
+                        [cubo[2][0].color, cubo[2][0].adyacente.color, cubo[2][0].precedente.color]]
             else:
                 print("No se han intercambiado las esquinas con valores 1 y 2")
                 return None

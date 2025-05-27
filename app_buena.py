@@ -443,10 +443,6 @@ class SolutionWidget(QWidget):
                     coords1 = [(cara1, i1, j1), (cara1a, i1a, j1a)]
                     coords2 = [(cara2, i2, j2), (cara2a, i2a, j2a)]
                     
-                    cs1 = cube_state[cara1][i1][j1]
-                    cs1a = cube_state[cara1a][i1a][j1a]
-                    cs2 = cube_state[cara2][i2][j2]
-                    cs2a = cube_state[cara2a][i2a][j2a]
                     
                     for k in (0, 1):
                         color1 = self.piezas_transmutadas[0][k]
@@ -494,25 +490,28 @@ class SolutionWidget(QWidget):
                     for k in range(3):
                         color1 = self.piezas_transmutadas[0][k]
                         color2 = self.piezas_transmutadas[1][k]
+                        print("Buscando colores:", color1, color2)
                         
                         # encontramos cual de las tres pegatinas de la pieza 1 es color1
                         for cara, i, j in coords1:
                             if cube_state[cara][i][j] == color1:
                                 posicion1 = (cara, i, j)
+                                print("Posición 1 encontrada:", posicion1)
                                 break
                         
                         for cara, i, j in coords2:
                             if cube_state[cara][i][j] == color2:
                                 posicion2 = (cara, i, j)
+                                print("Posición 2 encontrada:", posicion2)
                                 break
                             
                         temporal = cube_state[posicion1[0]][posicion1[1]][posicion1[2]]
                         cube_state[posicion1[0]][posicion1[1]][posicion1[2]] = cube_state[posicion2[0]][posicion2[1]][posicion2[2]]
                         cube_state[posicion2[0]][posicion2[1]][posicion2[2]] = temporal
+                        print("Intercambiando:", posicion1, "con", posicion2)
                     
                     self.cubo = orb.intercambiar_esquinas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
-
-                    
+              
     def nextStep(self):
         if self.current_step < len(self.secuencia_movimientos):
             num_mov = self.historial[self.current_step]
@@ -790,7 +789,7 @@ class MainWidget(QWidget):
                         
                         # elegimos si permutar dos aristas o dos esquinas
                         #eleccion = random.choice([0, 2])
-                        eleccion = 2
+                        eleccion = 0
                         nueva_perm = orb.cambiar_paridad(eleccion)
                         print("nueva permutación elegida:", nueva_perm)
                         nuevo_movimiento[eleccion] = nueva_perm
