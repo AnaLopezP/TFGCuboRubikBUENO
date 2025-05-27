@@ -385,132 +385,177 @@ class SolutionWidget(QWidget):
     def aplicar_errores(self):
         asignar_color_deuna(self.cubo)
         orb = Orbitas(self.movimiento_origen)
+        
+        print("Piezas transmutadas antes:", self.piezas_transmutadas)
+        
+        # --- Ajuste por flip previo ---
+        # en caso de que la casilla flippeada y una de las intercambiadas es la misma
+        if self.piecita_cambiada and self.piezas_transmutadas:
+            piezas_transmutadas_actualizadas = []
+            for pieza in self.piezas_transmutadas:
+                if pieza in self.piecita_cambiada:
+                    # Está flippeada, así que invertimos el orden
+                    piezas_transmutadas_actualizadas.append(pieza[::-1])
+                else:
+                    piezas_transmutadas_actualizadas.append(pieza)
+            self.piezas_transmutadas = piezas_transmutadas_actualizadas
+            
+        # --- Transmutación de piezas (intercambio de aristas) ---
+        if self.piezas_transmutadas is not None:
+            print("Piezas transmutadas:", self.piezas_transmutadas)
+            if len(self.piezas_transmutadas[0]) == 2:
+                # Se han intercambiado dos aristas
+                pieza1 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[0])
+                pieza2 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[1])
+
+                i1, j1 = pieza1.fila, pieza1.columna
+                i1a, j1a = pieza1.adyacente.fila, pieza1.adyacente.columna
+                i2, j2 = pieza2.fila, pieza2.columna
+                i2a, j2a = pieza2.adyacente.fila, pieza2.adyacente.columna
+                cara1, cara1a = pieza1.cara, pieza1.adyacente.cara
+                cara2, cara2a = pieza2.cara, pieza2.adyacente.cara
+
+                coords1 = [(cara1, i1, j1), (cara1a, i1a, j1a)]
+                coords2 = [(cara2, i2, j2), (cara2a, i2a, j2a)]
+
+                for k in (0, 1):
+                    color1 = self.piezas_transmutadas[0][k]
+                    color2 = self.piezas_transmutadas[1][k]
+
+                    for cara, i, j in coords1:
+                        if cube_state[cara][i][j] == color1:
+                            pos1 = (cara, i, j)
+                            break
+
+                    for cara, i, j in coords2:
+                        if cube_state[cara][i][j] == color2:
+                            pos2 = (cara, i, j)
+                            break
+
+                    temp = cube_state[pos1[0]][pos1[1]][pos1[2]]
+                    cube_state[pos1[0]][pos1[1]][pos1[2]] = cube_state[pos2[0]][pos2[1]][pos2[2]]
+                    cube_state[pos2[0]][pos2[1]][pos2[2]] = temp
+
+                # Actualizar el cubo lógico tras el intercambio
+                self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
+                asignar_color_deuna(self.cubo)
+                
+            elif len(self.piezas_transmutadas[0]) == 3:
+                        # se han intercambiado dos esquinas
+                        # cambiamos la matriz cubo
+                        # cambiamos cube_state
+                        pieza1 = orb.buscar_posicion_por_color_esquina(self.cubo, self.piezas_transmutadas[0])
+                        pieza2 = orb.buscar_posicion_por_color_esquina(self.cubo, self.piezas_transmutadas[1])
+                        
+                        i1, j1   = pieza1.fila, pieza1.columna
+                        ia1, ja1 = pieza1.adyacente.fila, pieza1.adyacente.columna
+                        ip1, jp1 = pieza1.precedente.fila, pieza1.precedente.columna
+
+                        i2, j2   = pieza2.fila, pieza2.columna
+                        ia2, ja2 = pieza2.adyacente.fila, pieza2.adyacente.columna
+                        ip2, jp2 = pieza2.precedente.fila, pieza2.precedente.columna
+
+                        cara1, cara1a, cara1p = pieza1.cara, pieza1.adyacente.cara, pieza1.precedente.cara
+                        cara2, cara2a, cara2p = pieza2.cara, pieza2.adyacente.cara, pieza2.precedente.cara
+                        
+                        coords1 = [(cara1, i1, j1), (cara1a, ia1, ja1), (cara1p, ip1, jp1)]
+                        coords2 = [(cara2, i2, j2), (cara2a, ia2, ja2), (cara2p, ip2, jp2)]
+                        
+                        for k in range(3):
+                            color1 = self.piezas_transmutadas[0][k]
+                            color2 = self.piezas_transmutadas[1][k]
+                            print("Buscando colores:", color1, color2)
+                            
+                            # encontramos cual de las tres pegatinas de la pieza 1 es color1
+                            for cara, i, j in coords1:
+                                if cube_state[cara][i][j] == color1:
+                                    posicion1 = (cara, i, j)
+                                    print("Posición 1 encontrada:", posicion1)
+                                    break
+                            
+                            for cara, i, j in coords2:
+                                if cube_state[cara][i][j] == color2:
+                                    posicion2 = (cara, i, j)
+                                    print("Posición 2 encontrada:", posicion2)
+                                    break
+                                
+                            temporal = cube_state[posicion1[0]][posicion1[1]][posicion1[2]]
+                            cube_state[posicion1[0]][posicion1[1]][posicion1[2]] = cube_state[posicion2[0]][posicion2[1]][posicion2[2]]
+                            cube_state[posicion2[0]][posicion2[1]][posicion2[2]] = temporal
+                            print("Intercambiando:", posicion1, "con", posicion2)
+                        
+                        self.cubo = orb.intercambiar_esquinas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
+                        asignar_color_deuna(self.cubo)
+                    
         # --- Flip de la pieza cambiada ---
         if self.piecita_cambiada is not None:
             print("Piezas flippeadas:", self.piecita_cambiada)
-            for casilla in range(len(self.piecita_cambiada)):
-                colores = self.piecita_cambiada[casilla]
+            for colores in self.piecita_cambiada:
                 if len(colores) == 2:
-                    # Arista
+                    # 1) Localiza la arista en el modelo
                     pieza = orb.buscar_posicion_por_color_arista(self.cubo, colores)
-                    if pieza:
-                        i, j = pieza.fila, pieza.columna
-                        ia, ja = pieza.adyacente.fila, pieza.adyacente.columna
-                        cara0, cara1 = pieza.cara, pieza.adyacente.cara
-                        c0 = cube_state[cara0][i][j]
-                        c1 = cube_state[cara1][ia][ja]
-                        cube_state[cara0][i][j] = c1
-                        cube_state[cara1][ia][ja] = c0
-                        orb.flippear_arista(self.cubo, (i, j))
+                    if not pieza:
+                        continue
+
+                    # 2) Prepara coords de los dos stickers de la arista
+                    coords = [
+                        (pieza.cara,        pieza.fila,        pieza.columna),
+                        (pieza.adyacente.cara, pieza.adyacente.fila, pieza.adyacente.columna)
+                    ]
+
+                    # 3) Encuentra en qué posición está cada color
+                    #    (aunque aquí flippearás ambas, lo hacemos por consistencia)
+                    pos1 = next((p for p, (c,i,j) in enumerate(coords)
+                                if cube_state[c][i][j] == colores[0]), None)
+                    pos2 = next((p for p, (c,i,j) in enumerate(coords)
+                                if cube_state[c][i][j] == colores[1]), None)
+
+                    # 4) Si ambos encontrados, swap en cube_state
+                    if pos1 is not None and pos2 is not None:
+                        c1, i1, j1 = coords[pos1]
+                        c2, i2, j2 = coords[pos2]
+                        tmp = cube_state[c1][i1][j1]
+                        cube_state[c1][i1][j1] = cube_state[c2][i2][j2]
+                        cube_state[c2][i2][j2] = tmp
+
+                        # 5) Flip en el modelo interno
+                        orb.flippear_arista(self.cubo, (pieza.fila, pieza.columna))
+
+                        # 6) Repinta sólo esa arista para mantener coherencia visual
+                        asignar_color_deuna(self.cubo)
                 else:
                     # Esquina
                     pieza = orb.buscar_posicion_por_color_esquina(self.cubo, colores)
                     if pieza:
-                        i, j = pieza.fila, pieza.columna
-                        ia, ja = pieza.adyacente.fila, pieza.adyacente.columna
-                        ip, jp = pieza.precedente.fila, pieza.precedente.columna
-                        cara0, cara1, cara2 = pieza.cara, pieza.adyacente.cara, pieza.precedente.cara
-                        c0 = cube_state[cara0][i][j]
-                        c1 = cube_state[cara1][ia][ja]
-                        c2 = cube_state[cara2][ip][jp]
+                        # 1) Prepara coords en orden [principal, adyacente, precedente]
+                        coords = [
+                            (pieza.cara,        pieza.fila,        pieza.columna),
+                            (pieza.adyacente.cara, pieza.adyacente.fila, pieza.adyacente.columna),
+                            (pieza.precedente.cara, pieza.precedente.fila, pieza.precedente.columna)
+                        ]
+
+                        # 2) Lee los colores actuales en esa orden
+                        vals = [cube_state[c][r][t] for (c, r, t) in coords]
+
+                        # 3) Genera la nueva lista de valores según el sentido
                         if self.sentido == 1:
-                            cube_state[cara0][i][j] = c2
-                            cube_state[cara1][ia][ja] = c0
-                            cube_state[cara2][ip][jp] = c1
-                            orb.flippear_esquina(self.cubo, (i, j), self.sentido)
+                            # rotación +1: [2→0, 0→1, 1→2]
+                            new_vals = [vals[2], vals[0], vals[1]]
                         elif self.sentido == 2:
-                            cube_state[cara0][i][j] = c1
-                            cube_state[cara1][ia][ja] = c2
-                            cube_state[cara2][ip][jp] = c0
-                            orb.flippear_esquina(self.cubo, (i, j), self.sentido)
-                            
-        # --- Transmutación de piezas ---
-        if self.piezas_transmutadas is not None:
-                print("Piezas transmutadas:", self.piezas_transmutadas)
-                if len(self.piezas_transmutadas[0]) == 2:
-                    # se han intrercambiado dos aristas
+                            # rotación -1: [1→0, 2→1, 0→2]
+                            new_vals = [vals[1], vals[2], vals[0]]
+                        else:
+                            raise ValueError("sentido debe ser 1 o 2 para esquinas")
 
-                    pieza1 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[0])
-                    pieza2 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[1])
-                    
-                    i1, j1 = pieza1.fila, pieza1.columna
-                    i1a, j1a = pieza1.adyacente.fila, pieza1.adyacente.columna
-                    i2, j2 = pieza2.fila, pieza2.columna
-                    i2a, j2a = pieza2.adyacente.fila, pieza2.adyacente.columna
-                    cara1, cara1a = pieza1.cara, pieza1.adyacente.cara
-                    cara2, cara2a = pieza2.cara, pieza2.adyacente.cara
-                    
-                    coords1 = [(cara1, i1, j1), (cara1a, i1a, j1a)]
-                    coords2 = [(cara2, i2, j2), (cara2a, i2a, j2a)]
-                    
-                    
-                    for k in (0, 1):
-                        color1 = self.piezas_transmutadas[0][k]
-                        color2 = self.piezas_transmutadas[1][k]
-                        
-                        # encuentramos cual de las dos pegatinas de la pieza 1 es color1
-                        for cara, i, j in coords1:
-                            if cube_state[cara][i][j] == color1:
-                                posicion1 = (cara, i, j)
-                                break
-                        
-                        for cara, i, j in coords2:
-                            if cube_state[cara][i][j] == color2:
-                                posicion2 = (cara, i, j)
-                                break
-                    
-                        temporal = cube_state[posicion1[0]][posicion1[1]][posicion1[2]]
-                        cube_state[posicion1[0]][posicion1[1]][posicion1[2]] = cube_state[posicion2[0]][posicion2[1]][posicion2[2]]
-                        cube_state[posicion2[0]][posicion2[1]][posicion2[2]] = temporal
-                    
-                    self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
-                    #asignar_color_deuna(self.cubo)
-                   
-                elif len(self.piezas_transmutadas[0]) == 3:
-                    # se han intercambiado dos esquinas
-                    # cambiamos la matriz cubo
-                    # cambiamos cube_state
-                    pieza1 = orb.buscar_posicion_por_color_esquina(self.cubo, self.piezas_transmutadas[0])
-                    pieza2 = orb.buscar_posicion_por_color_esquina(self.cubo, self.piezas_transmutadas[1])
-                    
-                    i1, j1   = pieza1.fila, pieza1.columna
-                    ia1, ja1 = pieza1.adyacente.fila, pieza1.adyacente.columna
-                    ip1, jp1 = pieza1.precedente.fila, pieza1.precedente.columna
+                        # 4) Escribe los stickers en cube_state
+                        for (c, r, t), v in zip(coords, new_vals):
+                            cube_state[c][r][t] = v
 
-                    i2, j2   = pieza2.fila, pieza2.columna
-                    ia2, ja2 = pieza2.adyacente.fila, pieza2.adyacente.columna
-                    ip2, jp2 = pieza2.precedente.fila, pieza2.precedente.columna
+                        # 5) Actualiza el modelo interno
+                        orb.flippear_esquina(self.cubo, (pieza.fila, pieza.columna), self.sentido)
 
-                    cara1, cara1a, cara1p = pieza1.cara, pieza1.adyacente.cara, pieza1.precedente.cara
-                    cara2, cara2a, cara2p = pieza2.cara, pieza2.adyacente.cara, pieza2.precedente.cara
-                    
-                    coords1 = [(cara1, i1, j1), (cara1a, ia1, ja1), (cara1p, ip1, jp1)]
-                    coords2 = [(cara2, i2, j2), (cara2a, ia2, ja2), (cara2p, ip2, jp2)]
-                    
-                    for k in range(3):
-                        color1 = self.piezas_transmutadas[0][k]
-                        color2 = self.piezas_transmutadas[1][k]
-                        print("Buscando colores:", color1, color2)
-                        
-                        # encontramos cual de las tres pegatinas de la pieza 1 es color1
-                        for cara, i, j in coords1:
-                            if cube_state[cara][i][j] == color1:
-                                posicion1 = (cara, i, j)
-                                print("Posición 1 encontrada:", posicion1)
-                                break
-                        
-                        for cara, i, j in coords2:
-                            if cube_state[cara][i][j] == color2:
-                                posicion2 = (cara, i, j)
-                                print("Posición 2 encontrada:", posicion2)
-                                break
-                            
-                        temporal = cube_state[posicion1[0]][posicion1[1]][posicion1[2]]
-                        cube_state[posicion1[0]][posicion1[1]][posicion1[2]] = cube_state[posicion2[0]][posicion2[1]][posicion2[2]]
-                        cube_state[posicion2[0]][posicion2[1]][posicion2[2]] = temporal
-                        print("Intercambiando:", posicion1, "con", posicion2)
-                    
-                    self.cubo = orb.intercambiar_esquinas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
+                        # 6) Repinta para mantener la vista coherente
+                        asignar_color_deuna(self.cubo)          
               
     def nextStep(self):
         if self.current_step < len(self.secuencia_movimientos):
@@ -757,7 +802,8 @@ class MainWidget(QWidget):
                     
                     if not restriccion_mod2:
                         orient2_buenas = orb.opciones_mod2_correcto()
-                        orient2_elegida = random.choice(orient2_buenas)
+                        #orient2_elegida = random.choice(orient2_buenas)
+                        orient2_elegida = orient2_buenas[0]  
                         nuevo_movimiento[1] = orient2_elegida
                         
                         color2 = orb.buscar_color_por_posicion_arista(orient2_elegida, self.cubo)
@@ -765,7 +811,8 @@ class MainWidget(QWidget):
                         
                     if not restriccion_mod3:
                         orient3_buenas = orb.opciones_mod3_correcto()
-                        orient3_elegida = random.choice(orient3_buenas)
+                        #orient3_elegida = random.choice(orient3_buenas)
+                        orient3_elegida = orient3_buenas[0]
                         nuevo_movimiento[3] = orient3_elegida
                         
                         # definimos el sentido de giro
@@ -786,7 +833,6 @@ class MainWidget(QWidget):
                         piezas_cambiadas.append(color3)
                               
                     if not restriccion_perm:
-                        
                         # elegimos si permutar dos aristas o dos esquinas
                         #eleccion = random.choice([0, 2])
                         eleccion = 0
@@ -795,12 +841,10 @@ class MainWidget(QWidget):
                         nuevo_movimiento[eleccion] = nueva_perm
                         if eleccion == 0:
                             piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
-                            print("las piezas puto transmutadas son:", piezas_transmutadas)
                         else:
                             piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
-                            print("las piezas puto transmutadas son:", piezas_transmutadas)
-                        
                     
+                        
                     self.mostrarMensaje(t('random_solution', self.lang))
                     secuencia, historial = buscar_identidad(buscar_nodo(nuevo_movimiento))
                     self.solutionWidget = SolutionWidget(
