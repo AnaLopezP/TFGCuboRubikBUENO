@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,  QPushButton, QStackedWidget, QGraphicsView, QGraphicsScene, QGraphicsRectItem
-from PyQt6.QtWidgets import QTextEdit,QGridLayout, QHBoxLayout, QWidget, QVBoxLayout, QWidget, QPushButton, QLabel, QMessageBox, QInputDialog
+from PyQt6.QtWidgets import QTextEdit,QGridLayout, QHBoxLayout, QWidget, QVBoxLayout, QWidget, QPushButton, QLabel, QMessageBox, QInputDialog, QDialog, QComboBox
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QBrush, QColor, QPen
@@ -10,7 +10,7 @@ from OpenGL.GLU import *
 from cubo import *
 from grafo import *
 import random
-from variables_globales import *
+from variables_globales import ROTATION_INDEX, COLORES, COLORES_CAMBIABLES, COLORES_MAPA, PALETTES, cube_state
 import traceback
 from orbitas import *
 import gettext
@@ -22,19 +22,6 @@ _ = gettext.gettext
 # ---------------------------
 # Estado global del cubo
 # ---------------------------
-# Lista de identificadores de caras (usada para el ciclo de colores)
-COLORES = ["B", "V", "N", "R", "AZ", "AM"]
-COLORES_CAMBIABLES = ["B", "V", "N", "R", "AZ"]  # Solo estas caras son cambiables
-# Mapa de colores (PyQt) para cada cara
-COLORES_MAPA = {
-    "B": QColor("white"),   # Up (Blanco)
-    "V": QColor("green"),   # Left (Verde)
-    "N": QColor("orange"),  # Back (Naranja)
-    "R": QColor("red"),     # Front (Rojo)
-    "AZ": QColor("blue"),   # Right (Azul)
-    "AM": QColor("yellow")   # Down (Amarillo)
-}
-
 # Definimos nombres para las casillas según su posición
 NOMBRES_ARISTAS = {(0, 1): "a", (1, 0): "b", (2, 1): "c", (1, 2): "d"}
 NOMBRES_VERTICES = {(0, 0): "e", (2, 0): "f", (2, 2): "g", (0, 2): "h"}
@@ -620,6 +607,16 @@ class MainWidget(QWidget):
         self.setWindowTitle(t('welcome', self.lang))  
 
         layout = QVBoxLayout(self)
+        
+        self.paletteBtn = QPushButton("Paleta de colores")
+        self.paletteBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.paletteBtn.clicked.connect(self.openPaletteDialog)
+        # lo colocamos en la esquina superior izquierda:
+        hl = QHBoxLayout()
+        hl.addWidget(self.paletteBtn, alignment=Qt.AlignmentFlag.AlignLeft)
+        hl.addStretch()
+        layout.addLayout(hl)
+        
         self.stacked = QStackedWidget()
         self.cubo = iniciar()
 
@@ -671,7 +668,36 @@ class MainWidget(QWidget):
         self.toggleBtn.setText(t('toggle_view', self.lang))
         self.reiniciarBtn.setText(t('reset_cube', self.lang))
         self.shuffleBtn.setText(t('shuffle_cube', self.lang))
+        
+    def openPaletteDialog(self):
+        dlg = PaletteDialog(self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            pal_name = dlg.selected_palette()
+            global ROTATION_INDEX, COLORES_MAPA
 
+            if pal_name == "Rotar":
+                # Avanza el índice y crea una paleta rotada sobre Default
+                ROTATION_INDEX = (ROTATION_INDEX + 1) % len(COLORES)
+                nuevo_mapa = {
+                    key: PALETTES["Default"][ COLORES[(i + ROTATION_INDEX) % len(COLORES)] ]
+                    for i, key in enumerate(COLORES)
+                }
+                COLORES_MAPA = nuevo_mapa
+
+            elif pal_name == "Random":
+                # Genera uno nuevo cada vez
+                COLORES_MAPA = {
+                    c: QColor.fromRgbF(random.random(), random.random(), random.random())
+                    for c in COLORES
+                }
+
+            else:
+                # Cualquiera de las paletas fijas: Default, Pastel, Oscuro, Brillante…
+                COLORES_MAPA = PALETTES[pal_name]
+
+            # Redibuja
+            self.cubeNet.drawNet()
+            self.cube3D.update()
     
     def get_cubenet(self):
         return self.cubeNet
@@ -895,6 +921,22 @@ class MainWidget(QWidget):
             traceback.print_exc()
             self.mostrarMensaje(f"Error al resolver: {e.__class__.__name__}: {e}")
             return None
+        
+class PaletteDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Selecciona paleta")
+        v = QVBoxLayout(self)
+        self.combo = QComboBox()
+        self.combo.addItems(["Default", "Rotar", "Pastel", "Oscuro",
+                     "Brillante", "Random"])
+        v.addWidget(self.combo)
+        btn = QPushButton("Aplicar")
+        btn.clicked.connect(self.accept)
+        v.addWidget(btn)
+
+    def selected_palette(self):
+        return self.combo.currentText()
                       
                 
 class MainMenuWidget(QWidget):
@@ -1081,7 +1123,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.mainContainer = MainContainer()
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(800, 700)
         self.setCentralWidget(self.mainContainer)
     
     def get_mainwidget(self):
