@@ -390,7 +390,7 @@ class SolutionWidget(QWidget):
         
         # --- Ajuste por flip previo ---
         # en caso de que la casilla flippeada y una de las intercambiadas es la misma
-        if self.piecita_cambiada and self.piezas_transmutadas:
+        '''if self.piecita_cambiada and self.piezas_transmutadas:
             piezas_transmutadas_actualizadas = []
             for pieza in self.piezas_transmutadas:
                 if pieza in self.piecita_cambiada:
@@ -398,7 +398,7 @@ class SolutionWidget(QWidget):
                     piezas_transmutadas_actualizadas.append(pieza[::-1])
                 else:
                     piezas_transmutadas_actualizadas.append(pieza)
-            self.piezas_transmutadas = piezas_transmutadas_actualizadas
+            self.piezas_transmutadas = piezas_transmutadas_actualizadas'''
             
         # --- Transmutación de piezas (intercambio de aristas) ---
         if self.piezas_transmutadas is not None:
