@@ -28,7 +28,7 @@ PALETTES = {
         "AM": QColor(255, 240, 180), 
     },
     "Oscuro": {
-        "B": QColor(100, 100),
+        "B": QColor(100, 100, 100),
         "V": QColor(30, 80, 30),
         "N": QColor(80, 40, 10),
         "R": QColor(80, 20, 20),
