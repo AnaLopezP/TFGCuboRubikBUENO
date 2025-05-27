@@ -379,8 +379,12 @@ class SolutionWidget(QWidget):
                 f"{t('step', self.lang)} {self.current_step+1}/{total}:\n{texto}"
             )
         else:
-            self.instructionsText.setPlainText(t('solution_complete', self.lang))
-            self.nextStepBtn.setEnabled(False)
+            if self.piecita_cambiada is not None or self.piezas_transmutadas is not None:
+                self.instructionsText.setPlainText(t('solution_complete_orbit', self.lang))
+                self.nextStepBtn.setEnabled(False)
+            else:
+                self.instructionsText.setPlainText(t('solution_complete', self.lang))
+                self.nextStepBtn.setEnabled(False)
 
     def aplicar_errores(self):
         asignar_color_deuna(self.cubo)
