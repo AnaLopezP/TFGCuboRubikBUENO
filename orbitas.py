@@ -193,89 +193,151 @@ class Orbitas:
         
     def intercambiar_aristas(self, cubo, colores1, colores2):
         """
-        Intercambia dos aristas en el cubo.
-        Busca las aristas por colores y las intercambia.
+        Intercambia en el modelo molecular los stickers de dos aristas, 
+        emparejando cada color de colores1 con el correspondiente de colores2.
         """
-        posicion1 = self.buscar_posicion_por_color_arista(cubo, colores1)
-        posicion2 = self.buscar_posicion_por_color_arista(cubo, colores2)
+        pieza1 = self.buscar_posicion_por_color_arista(cubo, colores1)
+        pieza2 = self.buscar_posicion_por_color_arista(cubo, colores2)
         
-        if posicion1 and posicion2:
-            # Intercambiamos los colores de las aristas
-            c1 = posicion1.color
-            c2 = posicion1.adyacente.color
-            posicion1.color = posicion2.color
-            posicion1.adyacente.color = posicion2.adyacente.color
-            posicion2.color = c1
-            posicion2.adyacente.color = c2
-            return cubo
-        else:
+        if not (pieza1 and pieza2):
             print("No se han encontrado las aristas a intercambiar")
             return None
+
+        # Lista de (molecula, atributo) para iterar sobre los dos stickers de cada arista
+        stickers1 = [(pieza1, 'color'), (pieza1.adyacente, 'color')]
+        stickers2 = [(pieza2, 'color'), (pieza2.adyacente, 'color')]
+
+        # Para cada índice 0 y 1, empareja colores1[k] con colores2[k]
+        for k in (0, 1):
+            c1_target = colores1[k]
+            c2_target = colores2[k]
+
+            # Busca en cuál sticker de la pieza1 está c1_target
+            for obj, attr in stickers1:
+                if getattr(obj, attr) == c1_target:
+                    sticker1_obj, sticker1_attr = obj, attr
+                    break
+
+            # Busca en cuál sticker de la pieza2 está c2_target
+            for obj, attr in stickers2:
+                if getattr(obj, attr) == c2_target:
+                    sticker2_obj, sticker2_attr = obj, attr
+                    break
+
+            # Intercambia valores
+            temp = getattr(sticker1_obj, sticker1_attr)
+            setattr(sticker1_obj, sticker1_attr, getattr(sticker2_obj, sticker2_attr))
+            setattr(sticker2_obj, sticker2_attr, temp)
+
+        return cubo
         
     def intercambiar_esquinas(self, cubo, colores1, colores2):
         """
-        Intercambia dos esquinas en el cubo.
-        Busca las esquinas por colores y las intercambia.
+        Intercambia dos esquinas en el modelo molecular,
+        emparejando cada color de colores1 con el correspondiente de colores2.
         """
-        posicion1 = self.buscar_posicion_por_color_esquina(cubo, colores1)
-        posicion2 = self.buscar_posicion_por_color_esquina(cubo, colores2)
+        pieza1 = self.buscar_posicion_por_color_esquina(cubo, colores1)
+        pieza2 = self.buscar_posicion_por_color_esquina(cubo, colores2)
         
-        if posicion1 and posicion2:
-            # Intercambiamos los colores de las esquinas
-            c1 = posicion1.color
-            c2 = posicion1.adyacente.color
-            c3 = posicion1.precedente.color
-            
-            posicion1.color = posicion2.color
-            posicion1.adyacente.color = posicion2.adyacente.color
-            posicion1.precedente.color = posicion2.precedente.color
-            
-            posicion2.color = c1
-            posicion2.adyacente.color = c2
-            posicion2.precedente.color = c3
-            
-            return cubo
-        else:
+        if not (pieza1 and pieza2):
             print("No se han encontrado las esquinas a intercambiar")
             return None
+
+        # stickers: (objeto, atributo) de los 3 stickers de cada esquina
+        stickers1 = [
+            (pieza1, 'color'),
+            (pieza1.adyacente, 'color'),
+            (pieza1.precedente, 'color'),
+        ]
+        stickers2 = [
+            (pieza2, 'color'),
+            (pieza2.adyacente, 'color'),
+            (pieza2.precedente, 'color'),
+        ]
+
+        # Para k = 0,1,2: empareja colores1[k] ↔ colores2[k]
+        for k in range(3):
+            c1_t = colores1[k]
+            c2_t = colores2[k]
+
+            # Busca sticker en esquina1 con c1_t
+            for obj, attr in stickers1:
+                if getattr(obj, attr) == c1_t:
+                    s1_obj, s1_attr = obj, attr
+                    break
+
+            # Busca sticker en esquina2 con c2_t
+            for obj, attr in stickers2:
+                if getattr(obj, attr) == c2_t:
+                    s2_obj, s2_attr = obj, attr
+                    break
+
+            # Intercambia
+            tmp = getattr(s1_obj, s1_attr)
+            setattr(s1_obj, s1_attr, getattr(s2_obj, s2_attr))
+            setattr(s2_obj, s2_attr, tmp)
+
+        return cubo
         
     def cambiar_paridad(self, eleccion):
-        # coje una de las permutaciones e intercambia dos valores de la permutación para cambiar la paridad
+        # Cambia la paridad intercambiando los valores 1 y 2 en el diccionario seleccionado
         if eleccion == 0:
-            # intercambiamos los dos primeros valores de la permutación 1
             nueva = self.perm1.copy()
-            nueva[1], nueva[2] = self.perm1[2], self.perm1[1]
-            return nueva
         elif eleccion == 2:
-            # intercambiamos los dos primeros valores de la permutación 2
             nueva = self.perm2.copy()
-            nueva[1], nueva[2] = self.perm2[2], self.perm2[1]
-            return nueva
         else:
             print("Elección no válida. Debe ser 0 o 2.")
-            
+            return None
+
+        # Buscar claves con valor 1 y 2
+        claves_valor_1 = [k for k, v in nueva.items() if v == 1]
+        claves_valor_2 = [k for k, v in nueva.items() if v == 2]
+
+        if claves_valor_1 and claves_valor_2:
+            # Tomamos la primera de cada una
+            k1 = claves_valor_1[0]
+            k2 = claves_valor_2[0]
+            # Intercambiamos los valores
+            nueva[k1], nueva[k2] = nueva[k2], nueva[k1]
+        else:
+            print("No se encontraron ambos valores 1 y 2 para intercambiar.")
+
+        return nueva
+                
     def buscar_casillas_intercambiadas(self, permutacion_nueva, cubo, eleccion):
         """
-        Busca las aristas que han sido intercambiadas en la nueva permutación.
-        Devuelve una lista de colores de las aristas que han cambiado.
+        Busca las aristas o esquinas que han sido intercambiadas en la nueva permutación.
+        Devuelve una lista de colores de las piezas que han cambiado.
         """
-        colores_intercambiados = []
-        # siempre cambiamos las mismas casillas, no hace falta el for
         if eleccion == 0:
-            if self.perm1[1] != permutacion_nueva[1] and self.perm1[2] != permutacion_nueva[2]:
+            # Buscar las claves que tenían valor 1 y 2 en perm1
+            original_k1 = next((k for k, v in self.perm1.items() if v == 1), None)
+            original_k2 = next((k for k, v in self.perm1.items() if v == 2), None)
+
+            # Buscar las claves que ahora tienen valor 1 y 2 en permutacion_nueva
+            nueva_k1 = next((k for k, v in permutacion_nueva.items() if v == 1), None)
+            nueva_k2 = next((k for k, v in permutacion_nueva.items() if v == 2), None)
+
+            if original_k1 != nueva_k1 or original_k2 != nueva_k2:
                 return [[cubo[0][1].color, cubo[0][1].adyacente.color],
                         [cubo[1][0].color, cubo[1][0].adyacente.color]]
-            else: 
-                print("No se han intercambiado las aristas 1 y 2")
-                return None
-        elif eleccion == 2:
-            if self.perm2[1] != permutacion_nueva[1] and self.perm2[2] != permutacion_nueva[2]:
-                return [[cubo[0][0].color, cubo[0][0].adyacente.color, cubo[0][0].precedente.color],
-                        [cubo[2][0].color, cubo[2][0].adyacente.color, cubo[2][0].precedente.color]]
             else:
-                print("No se han intercambiado las esquinas 1 y 2")
+                print("No se han intercambiado las aristas con valores 1 y 2")
                 return None
-                
-        return colores_intercambiados
 
-    
+        elif eleccion == 2:
+            original_k1 = next((k for k, v in self.perm2.items() if v == 1), None)
+            original_k2 = next((k for k, v in self.perm2.items() if v == 2), None)
+
+            nueva_k1 = next((k for k, v in permutacion_nueva.items() if v == 1), None)
+            nueva_k2 = next((k for k, v in permutacion_nueva.items() if v == 2), None)
+
+            if original_k1 != nueva_k1 or original_k2 != nueva_k2:
+                return [[cubo[0][0].color, cubo[0][0].adyacente.color, cubo[0][0].precedente.color],
+                        [cubo[0][2].color, cubo[0][2].adyacente.color, cubo[0][2].precedente.color]]
+            else:
+                print("No se han intercambiado las esquinas con valores 1 y 2")
+                return None
+
+        return None
+        

@@ -382,7 +382,6 @@ class SolutionWidget(QWidget):
             self.instructionsText.setPlainText(t('solution_complete', self.lang))
             self.nextStepBtn.setEnabled(False)
 
-            
     def aplicar_errores(self):
         asignar_color_deuna(self.cubo)
         orb = Orbitas(self.movimiento_origen)
@@ -430,57 +429,90 @@ class SolutionWidget(QWidget):
                 print("Piezas transmutadas:", self.piezas_transmutadas)
                 if len(self.piezas_transmutadas[0]) == 2:
                     # se han intrercambiado dos aristas
-                    # cambiamos la matriz cubo
-                    self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
-                    # cambiamos cube_state
+
                     pieza1 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[0])
                     pieza2 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[1])
+                    
                     i1, j1 = pieza1.fila, pieza1.columna
                     i1a, j1a = pieza1.adyacente.fila, pieza1.adyacente.columna
                     i2, j2 = pieza2.fila, pieza2.columna
                     i2a, j2a = pieza2.adyacente.fila, pieza2.adyacente.columna
                     cara1, cara1a = pieza1.cara, pieza1.adyacente.cara
                     cara2, cara2a = pieza2.cara, pieza2.adyacente.cara
+                    
+                    coords1 = [(cara1, i1, j1), (cara1a, i1a, j1a)]
+                    coords2 = [(cara2, i2, j2), (cara2a, i2a, j2a)]
+                    
                     cs1 = cube_state[cara1][i1][j1]
                     cs1a = cube_state[cara1a][i1a][j1a]
                     cs2 = cube_state[cara2][i2][j2]
                     cs2a = cube_state[cara2a][i2a][j2a]
                     
-                    cube_state[cara1][i1][j1] = cs2
-                    cube_state[cara1a][i1a][j1a] = cs2a
-                    cube_state[cara2][i2][j2] = cs1
-                    cube_state[cara2a][i2a][j2a] = cs1a
-                
+                    for k in (0, 1):
+                        color1 = self.piezas_transmutadas[0][k]
+                        color2 = self.piezas_transmutadas[1][k]
+                        
+                        # encuentramos cual de las dos pegatinas de la pieza 1 es color1
+                        for cara, i, j in coords1:
+                            if cube_state[cara][i][j] == color1:
+                                posicion1 = (cara, i, j)
+                                break
+                        
+                        for cara, i, j in coords2:
+                            if cube_state[cara][i][j] == color2:
+                                posicion2 = (cara, i, j)
+                                break
+                    
+                        temporal = cube_state[posicion1[0]][posicion1[1]][posicion1[2]]
+                        cube_state[posicion1[0]][posicion1[1]][posicion1[2]] = cube_state[posicion2[0]][posicion2[1]][posicion2[2]]
+                        cube_state[posicion2[0]][posicion2[1]][posicion2[2]] = temporal
+                    
+                    self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
+                    #asignar_color_deuna(self.cubo)
+                   
                 elif len(self.piezas_transmutadas[0]) == 3:
                     # se han intercambiado dos esquinas
                     # cambiamos la matriz cubo
-                    self.cubo = orb.intercambiar_esquinas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
                     # cambiamos cube_state
                     pieza1 = orb.buscar_posicion_por_color_esquina(self.cubo, self.piezas_transmutadas[0])
                     pieza2 = orb.buscar_posicion_por_color_esquina(self.cubo, self.piezas_transmutadas[1])
+                    
                     i1, j1   = pieza1.fila, pieza1.columna
                     ia1, ja1 = pieza1.adyacente.fila, pieza1.adyacente.columna
                     ip1, jp1 = pieza1.precedente.fila, pieza1.precedente.columna
+
                     i2, j2   = pieza2.fila, pieza2.columna
                     ia2, ja2 = pieza2.adyacente.fila, pieza2.adyacente.columna
                     ip2, jp2 = pieza2.precedente.fila, pieza2.precedente.columna
+
                     cara1, cara1a, cara1p = pieza1.cara, pieza1.adyacente.cara, pieza1.precedente.cara
                     cara2, cara2a, cara2p = pieza2.cara, pieza2.adyacente.cara, pieza2.precedente.cara
-                    cs1 = cube_state[cara1][i1][j1]
-                    cs1a = cube_state[cara1a][ia1][ja1]
-                    cs1p = cube_state[cara1p][ip1][jp1]
-                    cs2 = cube_state[cara2][i2][j2]
-                    cs2a = cube_state[cara2a][ia2][ja2]
-                    cs2p = cube_state[cara2p][ip2][jp2]
                     
-                    cube_state[cara1][i1][j1] = cs2
-                    cube_state[cara1a][ia1][ja1] = cs2a
-                    cube_state[cara1p][ip1][jp1] = cs2p
-                    cube_state[cara2][i2][j2] = cs1
-                    cube_state[cara2a][ia2][ja2] = cs1a
-                    cube_state[cara2p][ip2][jp2] = cs1p
+                    coords1 = [(cara1, i1, j1), (cara1a, ia1, ja1), (cara1p, ip1, jp1)]
+                    coords2 = [(cara2, i2, j2), (cara2a, ia2, ja2), (cara2p, ip2, jp2)]
+                    
+                    for k in range(3):
+                        color1 = self.piezas_transmutadas[0][k]
+                        color2 = self.piezas_transmutadas[1][k]
+                        
+                        # encontramos cual de las tres pegatinas de la pieza 1 es color1
+                        for cara, i, j in coords1:
+                            if cube_state[cara][i][j] == color1:
+                                posicion1 = (cara, i, j)
+                                break
+                        
+                        for cara, i, j in coords2:
+                            if cube_state[cara][i][j] == color2:
+                                posicion2 = (cara, i, j)
+                                break
+                            
+                        temporal = cube_state[posicion1[0]][posicion1[1]][posicion1[2]]
+                        cube_state[posicion1[0]][posicion1[1]][posicion1[2]] = cube_state[posicion2[0]][posicion2[1]][posicion2[2]]
+                        cube_state[posicion2[0]][posicion2[1]][posicion2[2]] = temporal
+                    
+                    self.cubo = orb.intercambiar_esquinas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
 
-            
+                    
     def nextStep(self):
         if self.current_step < len(self.secuencia_movimientos):
             num_mov = self.historial[self.current_step]
@@ -491,6 +523,7 @@ class SolutionWidget(QWidget):
             asignar_color_deuna(self.cubo)
             
             # aplicamos los errores de la órbita
+            print("Aplicando errores de órbita...")
             self.aplicar_errores()
             
             # Actualizar la vista 3D
@@ -756,13 +789,17 @@ class MainWidget(QWidget):
                     if not restriccion_perm:
                         
                         # elegimos si permutar dos aristas o dos esquinas
-                        eleccion = random.choice([0, 2])
+                        #eleccion = random.choice([0, 2])
+                        eleccion = 2
                         nueva_perm = orb.cambiar_paridad(eleccion)
+                        print("nueva permutación elegida:", nueva_perm)
                         nuevo_movimiento[eleccion] = nueva_perm
                         if eleccion == 0:
                             piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
+                            print("las piezas puto transmutadas son:", piezas_transmutadas)
                         else:
                             piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
+                            print("las piezas puto transmutadas son:", piezas_transmutadas)
                         
                     
                     self.mostrarMensaje(t('random_solution', self.lang))
