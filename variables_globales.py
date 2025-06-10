@@ -10,6 +10,9 @@ COLORES = ["B", "V", "N", "R", "AZ", "AM"]
 COLORES_CAMBIABLES = ["B", "V", "N", "R", "AZ"]
 
 # 2) Defino PALETTES "fijas"
+
+PALETTE_KEYS = ["Default", "Rotar", "Pastel", "Oscuro", "Brillante", "Random"]
+
 PALETTES = {
     "Default": {
         "B": QColor("white"),

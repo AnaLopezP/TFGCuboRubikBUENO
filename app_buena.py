@@ -1,16 +1,16 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,  QPushButton, QStackedWidget, QGraphicsView, QGraphicsScene, QGraphicsRectItem
-from PyQt6.QtWidgets import QTextEdit,QGridLayout, QHBoxLayout, QWidget, QVBoxLayout, QWidget, QPushButton, QLabel, QMessageBox, QInputDialog, QDialog, QComboBox
+from PyQt6.QtWidgets import QTextEdit,QGridLayout, QHBoxLayout, QWidget, QVBoxLayout, QWidget, QPushButton, QLabel, QMessageBox, QInputDialog, QDialog, QComboBox, QSizePolicy
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtCore import Qt, QPoint
-from PyQt6.QtGui import QBrush, QColor, QPen
+from PyQt6.QtGui import QBrush, QColor, QPen, QGuiApplication
 from PyQt6.QtCore import QTimer
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from cubo import *
 from grafo import *
 import random
-from variables_globales import ROTATION_INDEX, COLORES, COLORES_CAMBIABLES, COLORES_MAPA, PALETTES, cube_state
+from variables_globales import PALETTE_KEYS, ROTATION_INDEX, COLORES, COLORES_CAMBIABLES, COLORES_MAPA, PALETTES, cube_state
 import traceback
 from orbitas import *
 import gettext
@@ -85,12 +85,11 @@ class CuboTile(QGraphicsRectItem):
 class RubiksCubeNet(QGraphicsView):
     def __init__(self, parent=None, cube3d=None):
         super().__init__(parent)
-        self.setFixedSize(1000, 800)
         self.scene = QGraphicsScene()
         self.setScene(self.scene)
         self.cube3d = cube3d
         self.setBackgroundBrush(QColor(25, 25, 25))
-        self.scene.setSceneRect(0, 0, 600, 500)
+        self.scene.setSceneRect(0, -50, 500, 500)
         self.tile = None
         self.drawNet()
         
@@ -297,6 +296,7 @@ class SolutionWidget(QWidget):
         # Panel izquierdo
         self.leftPanel = QWidget()
         leftLayout = QVBoxLayout(self.leftPanel)
+        leftLayout.setSpacing(5)
 
         self.comentario = QTextEdit()
         self.comentario.setReadOnly(True)
@@ -340,6 +340,9 @@ class SolutionWidget(QWidget):
         self.mainLayout.addWidget(self.leftPanel, 3)
         self.mainLayout.addWidget(self.middleWidget)
         self.mainLayout.addWidget(self.cube3DView, 3)
+        
+        self.leftPanel.setMinimumWidth(200)
+        self.cube3DView.setMinimumWidth(200)
 
         # Inicializar textos y estado
         self.retranslate()
@@ -372,53 +375,38 @@ class SolutionWidget(QWidget):
             else:
                 self.instructionsText.setPlainText(t('solution_complete', self.lang))
                 self.nextStepBtn.setEnabled(False)
-
+                
     def aplicar_errores(self):
         asignar_color_deuna(self.cubo)
         orb = Orbitas(self.movimiento_origen)
-        
-        print("Piezas transmutadas antes:", self.piezas_transmutadas)
-            
         # --- Transmutación de piezas (intercambio de aristas) ---
-        if self.piezas_transmutadas is not None:
-            print("Piezas transmutadas:", self.piezas_transmutadas)
+        if self.piezas_transmutadas:
+
             if len(self.piezas_transmutadas[0]) == 2:
-                # Se han intercambiado dos aristas
+                # Intercambiar en el modelo lógico del cubo
+                self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
+                pintar_cubo(self.cubo)
                 pieza1 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[0])
                 pieza2 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[1])
-
-                i1, j1 = pieza1.fila, pieza1.columna
-                i1a, j1a = pieza1.adyacente.fila, pieza1.adyacente.columna
-                i2, j2 = pieza2.fila, pieza2.columna
-                i2a, j2a = pieza2.adyacente.fila, pieza2.adyacente.columna
-                cara1, cara1a = pieza1.cara, pieza1.adyacente.cara
-                cara2, cara2a = pieza2.cara, pieza2.adyacente.cara
-
-                coords1 = [(cara1, i1, j1), (cara1a, i1a, j1a)]
-                coords2 = [(cara2, i2, j2), (cara2a, i2a, j2a)]
-
-                for k in (0, 1):
-                    color1 = self.piezas_transmutadas[0][k]
-                    color2 = self.piezas_transmutadas[1][k]
-
-                    for cara, i, j in coords1:
-                        if cube_state[cara][i][j] == color1:
-                            pos1 = (cara, i, j)
-                            break
-
-                    for cara, i, j in coords2:
-                        if cube_state[cara][i][j] == color2:
-                            pos2 = (cara, i, j)
-                            break
-
-                    temp = cube_state[pos1[0]][pos1[1]][pos1[2]]
-                    cube_state[pos1[0]][pos1[1]][pos1[2]] = cube_state[pos2[0]][pos2[1]][pos2[2]]
-                    cube_state[pos2[0]][pos2[1]][pos2[2]] = temp
-
-                # Actualizar el cubo lógico tras el intercambio
-                self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
+                
+                cara_pieza1 = pieza1.cara
+                cara_pieza2 = pieza2.cara
+                
+                fila_pieza1 = pieza1.fila
+                fila_pieza2 = pieza2.fila
+                
+                columna_pieza1 = pieza1.columna
+                columna_pieza2 = pieza2.columna
+                
+                # Actualizar el estado del cubo con los colores
+                cube_state[cara_pieza1][fila_pieza1][columna_pieza1] = pieza1.color
+                cube_state[cara_pieza2][fila_pieza2][columna_pieza2] = pieza2.color
+                
+                cube_state[pieza1.adyacente.cara][pieza1.adyacente.fila][pieza1.adyacente.columna] = pieza1.adyacente.color
+                cube_state[pieza2.adyacente.cara][pieza2.adyacente.fila][pieza2.adyacente.columna] = pieza2.adyacente.color
+                
                 asignar_color_deuna(self.cubo)
-                    
+                
         # --- Flip de la pieza cambiada ---
         if self.piecita_cambiada is not None:
             print("Piezas flippeadas:", self.piecita_cambiada)
@@ -471,11 +459,9 @@ class SolutionWidget(QWidget):
 
                         # 3) Genera la nueva lista de valores según el sentido
                         if self.sentido == 1:
-                            # rotación +1: [2→0, 0→1, 1→2]
-                            new_vals = [vals[2], vals[0], vals[1]]
-                        elif self.sentido == 2:
-                            # rotación -1: [1→0, 2→1, 0→2]
                             new_vals = [vals[1], vals[2], vals[0]]
+                        elif self.sentido == 2:
+                            new_vals = [vals[2], vals[0], vals[1]]
                         else:
                             raise ValueError("sentido debe ser 1 o 2 para esquinas")
 
@@ -522,20 +508,26 @@ class SolutionWidget(QWidget):
             parent.stacked.setCurrentIndex(0)  
 
     def toggleView(self):
-        if self.showingFullCube:
-            # Volver a la vista dividida
-            self.leftPanel.show()
-            self.toggleViewBtn.setText("<<")
-            self.mainLayout.insertWidget(0, self.leftPanel)
-            self.mainLayout.insertWidget(1, self.middleWidget)
-        else:
-            # Ocultar panel izquierdo, mover botón al borde
-            self.leftPanel.hide()
-            self.toggleViewBtn.setText(">>")
-            self.mainLayout.removeWidget(self.leftPanel)
-            self.mainLayout.removeWidget(self.middleWidget)
-            self.mainLayout.insertWidget(0, self.middleWidget)
         self.showingFullCube = not self.showingFullCube
+
+        if self.showingFullCube:
+            # 1) Ocultamos el panel izquierdo y el botón del medio
+            self.leftPanel.hide()
+            
+            # 2) Ahora hacemos que el cubo 3D sea el único que crezca
+            self.mainLayout.setStretch(0, 0)  # left panel
+            self.mainLayout.setStretch(1, 0)  # middle button
+            self.mainLayout.setStretch(2, 1)  # cube3DView
+            self.toggleViewBtn.setText(">>")
+        else:
+            # 1) Volvemos a mostrar los dos widgets secundarios
+            self.leftPanel.show()
+            self.middleWidget.show()
+            # 2) Restauramos los factores originales (3:0:3)
+            self.mainLayout.setStretch(0, 3)
+            self.mainLayout.setStretch(1, 0)
+            self.mainLayout.setStretch(2, 3)
+            self.toggleViewBtn.setText("<<")
 
 
 # ---------------------------
@@ -545,61 +537,99 @@ class MainWidget(QWidget):
     def __init__(self, lang):
         super().__init__()
         self.lang = lang
-        self.setWindowTitle(t('welcome', self.lang))  
+        self.setWindowTitle(t('welcome', self.lang))
 
         layout = QVBoxLayout(self)
-        
-        self.paletteBtn = QPushButton("Paleta de colores")
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+
+        # ==== HEADER ====
+        self.paletteBtn = QPushButton(t('color_palette', self.lang))
         self.paletteBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.paletteBtn.clicked.connect(self.openPaletteDialog)
-        # lo colocamos en la esquina superior izquierda:
-        hl = QHBoxLayout()
-        hl.addWidget(self.paletteBtn, alignment=Qt.AlignmentFlag.AlignLeft)
-        hl.addStretch()
-        layout.addLayout(hl)
+        header = QHBoxLayout()
+        header.addWidget(self.paletteBtn, alignment=Qt.AlignmentFlag.AlignLeft)
+        header.addStretch()
+        layout.addLayout(header)          
+        header_style = """QPushButton {
+        background-color: #f58ea7;
+        color: #262626;
+        font-size: 12px;          /* más pequeño */
+        font-weight: bold;
+        padding: 8px;             /* menos padding */
+        border: none;
+        border-radius: 8px;       /* ligeramente redondeado */
+        min-width: 80px;          /* ancho mínimo */
+        }
+        QPushButton:hover {
+            background-color: #f15f9b;
+        }"""
+        self.paletteBtn.setStyleSheet(header_style)
         
+        # ==== CUERPO ====
         self.stacked = QStackedWidget()
+        self.stacked.setSizePolicy(
+            QSizePolicy(QSizePolicy.Policy.Expanding,
+                        QSizePolicy.Policy.Expanding)
+        )
         self.cubo = iniciar()
-
-        # Vistas 3D y Net
         self.cube3D  = RubiksCube3D()
         self.cubeNet = RubiksCubeNet(cube3d=self.cube3D)
         self.stacked.addWidget(self.cube3D)
         self.stacked.addWidget(self.cubeNet)
-        layout.addWidget(self.stacked)
+        layout.addWidget(self.stacked)  
+        
 
-        # Label de mensajes temporales
         self.messageLabel = QLabel("")
         self.messageLabel.setStyleSheet(
             "background-color: #ff3333; color: white; font-size: 16px; padding: 10px; border-radius: 5px;"
         )
         self.messageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.messageLabel)
         self.messageLabel.hide()
+        layout.addWidget(self.messageLabel)
 
-        # Botones inferiores
-        btnLayout = QHBoxLayout()
         self.solucionarBtn = QPushButton()
-        self.solucionarBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.solucionarBtn.clicked.connect(self.solucionar)
+        self.toggleBtn     = QPushButton()
+        self.reiniciarBtn  = QPushButton()
+        self.shuffleBtn    = QPushButton()
+        
+        footer_style = """QPushButton {
+        background-color: #a7f58e;
+        color: #262626;
+        font-size: 12px;          /* más pequeño */
+        font-weight: bold;
+        padding: 8px;             /* menos padding */
+        border: none;
+        border-radius: 8px;       /* ligeramente redondeado */
+        min-width: 80px;          /* ancho mínimo */
+        }
+        QPushButton:hover {
+            background-color: #9bf15f;
+        }"""
+        for btn in (self.solucionarBtn, self.toggleBtn,
+                    self.reiniciarBtn, self.shuffleBtn):
+            btn.setStyleSheet(footer_style)
+    
+        for btn, handler in (
+            (self.solucionarBtn, self.solucionar),
+            (self.toggleBtn,     self.toggleView),
+            (self.reiniciarBtn,  self.reiniciarCubo),
+            (self.shuffleBtn,    self.mezclarCubo)
+        ):
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.clicked.connect(handler)
+        footer = QHBoxLayout()
+        for btn in (self.solucionarBtn, self.toggleBtn,
+                    self.reiniciarBtn, self.shuffleBtn):
+            footer.addWidget(btn)
+        layout.addLayout(footer)  
 
-        self.toggleBtn = QPushButton()
-        self.toggleBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.toggleBtn.clicked.connect(self.toggleView)
 
-        self.reiniciarBtn = QPushButton()
-        self.reiniciarBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.reiniciarBtn.clicked.connect(self.reiniciarCubo)
+        layout.setStretch(0, 0)  
+        layout.setStretch(1, 1)  
+        layout.setStretch(2, 0)  
+        layout.setStretch(3, 0)  
 
-        self.shuffleBtn = QPushButton()
-        self.shuffleBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.shuffleBtn.clicked.connect(self.mezclarCubo)
-
-        for btn in (self.solucionarBtn, self.toggleBtn, self.reiniciarBtn, self.shuffleBtn):
-            btnLayout.addWidget(btn)
-        layout.addLayout(btnLayout)
-
-        # finalmente, ponemos los textos
         self.retranslate()
         
     def retranslate(self):
@@ -611,12 +641,13 @@ class MainWidget(QWidget):
         self.shuffleBtn.setText(t('shuffle_cube', self.lang))
         
     def openPaletteDialog(self):
-        dlg = PaletteDialog(self)
+        dlg = PaletteDialog(self, self.lang)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            pal_name = dlg.selected_palette()
             global ROTATION_INDEX, COLORES_MAPA
+            idx = dlg.selected_index()
+            key = PALETTE_KEYS[idx]
 
-            if pal_name == "Rotar":
+            if key == "Rotar":
                 # Avanza el índice y crea una paleta rotada sobre Default
                 ROTATION_INDEX = (ROTATION_INDEX + 1) % len(COLORES)
                 nuevo_mapa = {
@@ -625,7 +656,7 @@ class MainWidget(QWidget):
                 }
                 COLORES_MAPA = nuevo_mapa
 
-            elif pal_name == "Random":
+            elif key == "Random":
                 # Genera uno nuevo cada vez
                 COLORES_MAPA = {
                     c: QColor.fromRgbF(random.random(), random.random(), random.random())
@@ -634,7 +665,7 @@ class MainWidget(QWidget):
 
             else:
                 # Cualquiera de las paletas fijas: Default, Pastel, Oscuro, Brillante…
-                COLORES_MAPA = PALETTES[pal_name]
+                COLORES_MAPA = PALETTES[key]
 
             # Redibuja
             self.cubeNet.drawNet()
@@ -702,21 +733,6 @@ class MainWidget(QWidget):
         self.messageLabel.setText(texto)
         self.messageLabel.show()
         QTimer.singleShot(3000, self.messageLabel.hide)
-        
-    '''def openSolutionWindow(self, secuencia, historial, piecita_cambiada, movimiento_origen):
-        """Crea una ventana independiente con un SolutionWidget."""
-        sw = SolutionWidget(
-            secuencia_movimientos=secuencia,
-            historial=historial,
-            piecita_cambiada=piecita_cambiada,
-            cubo_modelo=self.cubo,
-            movimiento_origen=movimiento_origen
-        )
-        win = QMainWindow(self)
-        win.setWindowTitle("Solución alternativa")
-        win.setCentralWidget(sw)
-        win.resize(800, 600)
-        win.show()'''
 
     def solucionar(self):
         # 1) Comprobamos que el cubo no está ya resuelto
@@ -809,9 +825,9 @@ class MainWidget(QWidget):
                         nueva_perm = orb.cambiar_paridad(eleccion)
                         print("nueva permutación elegida:", nueva_perm)
                         nuevo_movimiento[eleccion] = nueva_perm
-                        piezas_transmutadas = orb.buscar_piezas_transmutadas(nueva_perm, eleccion)
+                        piezas_transmutadas = orb.buscar_casillas_intercambiadas(nueva_perm, self.cubo, eleccion)
                     
-                        
+                    #pintar_cubo(self.cubo)     
                     self.mostrarMensaje(t('random_solution', self.lang))
                     secuencia, historial = buscar_identidad(buscar_nodo(nuevo_movimiento))
                     self.solutionWidget = SolutionWidget(
@@ -860,20 +876,21 @@ class MainWidget(QWidget):
             return None
         
 class PaletteDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, lang='es'):
         super().__init__(parent)
-        self.setWindowTitle("Selecciona paleta")
+        self.lang = lang
+        self.setWindowTitle(t('select_palette', self.lang))
+        self.setMinimumSize(300, 150)
         v = QVBoxLayout(self)
         self.combo = QComboBox()
-        self.combo.addItems(["Default", "Rotar", "Pastel", "Oscuro",
-                     "Brillante", "Random"])
+        self.combo.addItems(t('tipos_paleta', self.lang))
         v.addWidget(self.combo)
-        btn = QPushButton("Aplicar")
+        btn = QPushButton(t('aplicar', self.lang))
         btn.clicked.connect(self.accept)
         v.addWidget(btn)
 
-    def selected_palette(self):
-        return self.combo.currentText()
+    def selected_index(self):
+        return self.combo.currentIndex()
                       
                 
 class MainMenuWidget(QWidget):
@@ -1060,7 +1077,14 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.mainContainer = MainContainer()
-        self.setMinimumSize(800, 700)
+        
+        screen = QGuiApplication.primaryScreen()
+        rect = screen.availableGeometry()
+        w = int(rect.width() * 0.8)
+        h = int(rect.height() * 0.8)
+        self.resize(w, h)
+        self.setMinimumSize(int(rect.width() * 0.5), int(rect.height() * 0.5))
+        
         self.setCentralWidget(self.mainContainer)
     
     def get_mainwidget(self):
@@ -1073,7 +1097,6 @@ def run_app():
     cubo = iniciar()
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.resize(800, 600)
     window.show()
     sys.exit(app.exec())
 

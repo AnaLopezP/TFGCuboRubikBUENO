@@ -1,7 +1,7 @@
 \begin{lstlisting}
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,  QPushButton, QStackedWidget, QGraphicsView, QGraphicsScene, QGraphicsRectItem
-from PyQt6.QtWidgets import QTextEdit,QGridLayout, QHBoxLayout, QWidget, QVBoxLayout, QWidget, QPushButton, QLabel, QMessageBox, QInputDialog
+from PyQt6.QtWidgets import QTextEdit,QGridLayout, QHBoxLayout, QWidget, QVBoxLayout, QWidget, QPushButton, QLabel, QMessageBox, QInputDialog, QDialog, QComboBox
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QBrush, QColor, QPen
@@ -11,7 +11,7 @@ from OpenGL.GLU import *
 from cubo import *
 from grafo import *
 import random
-from variables_globales import *
+from variables_globales import ROTATION_INDEX, COLORES, COLORES_CAMBIABLES, COLORES_MAPA, PALETTES, cube_state
 import traceback
 from orbitas import *
 import gettext
@@ -23,19 +23,6 @@ _ = gettext.gettext
 # ---------------------------
 # Estado global del cubo
 # ---------------------------
-# Lista de identificadores de caras (usada para el ciclo de colores)
-COLORES = ["B", "V", "N", "R", "AZ", "AM"]
-COLORES_CAMBIABLES = ["B", "V", "N", "R", "AZ"]  # Solo estas caras son cambiables
-# Mapa de colores (PyQt) para cada cara
-COLORES_MAPA = {
-    "B": QColor("white"),   # Up (Blanco)
-    "V": QColor("green"),   # Left (Verde)
-    "N": QColor("orange"),  # Back (Naranja)
-    "R": QColor("red"),     # Front (Rojo)
-    "AZ": QColor("blue"),   # Right (Azul)
-    "AM": QColor("yellow")   # Down (Amarillo)
-}
-
 # Definimos nombres para las casillas según su posición
 NOMBRES_ARISTAS = {(0, 1): "a", (1, 0): "b", (2, 1): "c", (1, 2): "d"}
 NOMBRES_VERTICES = {(0, 0): "e", (2, 0): "f", (2, 2): "g", (0, 2): "h"}
@@ -280,7 +267,7 @@ class SolutionWidget(QWidget):
     def __init__(
         self,
         secuencia_movimientos, historial,
-        piecita_cambiada, sentido, cubo_modelo,
+        piecita_cambiada, piezas_transmutadas, sentido, cubo_modelo,
         movimiento_origen, lang,
         parent=None
     ):
@@ -291,14 +278,17 @@ class SolutionWidget(QWidget):
         # Estados de vista
         self.showingFullCube = False
         self.flip_shown = (piecita_cambiada is None)
+        self.trans_shown = (piezas_transmutadas is None)
         self.flip_end_shown = False
+        self.trans_end_shown = False
         self.current_step = 0
 
         # Datos del algoritmo
         self.cubo = cubo_modelo
         self.secuencia_movimientos = secuencia_movimientos
         self.historial = historial
-        self.piecita_cambiada = piecita_cambiada
+        self.piecita_cambiada = piecita_cambiada # lista con los colores de las casillas que se flipean
+        self.piezas_transmutadas = piezas_transmutadas # lista con los colores de las dos casillas intercambiadas
         self.sentido = sentido
         self.movimiento_origen = movimiento_origen
 
@@ -365,161 +355,165 @@ class SolutionWidget(QWidget):
         # Toggle view button remains an icon or arrows
 
     def updateStep(self):
-        total = len(self.secuencia_movimientos) + 2
-        # --- Si no hay pieza desorientada (órbita canónica), vamos directo a movimientos canónicos ---
-        if self.piecita_cambiada is None:
-            total = len(self.secuencia_movimientos)
-            # Muestra el primer movimiento canónico
-            if self.current_step < len(self.secuencia_movimientos):
-                mov = self.secuencia_movimientos[self.current_step]
-                texto = t(f"{mov}", self.lang)
-                self.instructionsText.setPlainText(
-                    f"{t('step', self.lang)} {self.current_step+1}/{total}:\n{texto}"
-                )
+        """
+        Muestra únicamente los pasos canónicos (sin flips iniciales ni finales).
+        """
+        total = len(self.secuencia_movimientos)
+        # Si queda movimiento, mostramos instrucción de ese paso
+        if self.current_step < total:
+            mov = self.secuencia_movimientos[self.current_step]
+            texto = t(f"{mov}", self.lang)
+            self.instructionsText.setPlainText(
+                f"{t('step', self.lang)} {self.current_step+1}/{total}:\n{texto}"
+            )
+        else:
+            if self.piecita_cambiada is not None or self.piezas_transmutadas is not None:
+                self.instructionsText.setPlainText(t('solution_complete_orbit', self.lang))
+                self.nextStepBtn.setEnabled(False)
             else:
                 self.instructionsText.setPlainText(t('solution_complete', self.lang))
                 self.nextStepBtn.setEnabled(False)
-            return
 
-        # --- Paso 0: flip inicial ---
-        if not self.flip_shown:
-            self.instructionsText.setPlainText(
-                f"{t('step', self.lang)} 0/{total}:\n{t('arista_flipped', self.lang)}"
-            )
-            return
-
-        # --- Paso final: flip de vuelta ---
-        if self.flip_shown and not self.flip_end_shown and self.current_step >= len(self.secuencia_movimientos):
-            paso = len(self.secuencia_movimientos) + 1
-            self.instructionsText.setPlainText(
-                f"{t('step', self.lang)} {paso}/{total}:\n{t('arista_flipped', self.lang)}"
-            )
-            return
-
-        # --- Pasos intermedios canónicos ---
-        idx = self.current_step
-        if idx < len(self.secuencia_movimientos):
-            mov = self.secuencia_movimientos[idx]
-            texto = t(f"{mov}", self.lang)
-            self.instructionsText.setPlainText(
-                f"{t('step', self.lang)} {idx+1}/{total}:\n{texto}"
-            )
-        else:
-            self.instructionsText.setPlainText(t('solution_complete', self.lang))
-            self.nextStepBtn.setEnabled(False)
-
+    def aplicar_errores(self):
+        asignar_color_deuna(self.cubo)
+        orb = Orbitas(self.movimiento_origen)
+        
+        print("Piezas transmutadas antes:", self.piezas_transmutadas)
             
-    def nextStep(self):
-        # --- Paso 0: flip inicial ---
-        if not self.flip_shown:
-            orb = Orbitas(self.movimiento_origen)
+        # --- Transmutación de piezas (intercambio de aristas) ---
+        if self.piezas_transmutadas is not None:
+            print("Piezas transmutadas:", self.piezas_transmutadas)
+            if len(self.piezas_transmutadas[0]) == 2:
+                # Se han intercambiado dos aristas
+                pieza1 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[0])
+                pieza2 = orb.buscar_posicion_por_color_arista(self.cubo, self.piezas_transmutadas[1])
 
-            if isinstance(self.piecita_cambiada, (list, tuple)) and len(self.piecita_cambiada) == 2:
-                # es una arista
-                pieza = orb.buscar_posicion_por_color_arista(self.cubo,
-                                                            self.piecita_cambiada)
-            else:
-                # es una esquina (longitud==3)
-                pieza = orb.buscar_posicion_por_color_esquina(self.cubo,
-                                                            self.piecita_cambiada)
+                i1, j1 = pieza1.fila, pieza1.columna
+                i1a, j1a = pieza1.adyacente.fila, pieza1.adyacente.columna
+                i2, j2 = pieza2.fila, pieza2.columna
+                i2a, j2a = pieza2.adyacente.fila, pieza2.adyacente.columna
+                cara1, cara1a = pieza1.cara, pieza1.adyacente.cara
+                cara2, cara2a = pieza2.cara, pieza2.adyacente.cara
 
-            if pieza:
-                i,j   = pieza.fila, pieza.columna
-                ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
-                ip,jp = pieza.precedente.fila, pieza.precedente.columna
-                cara0, cara1, cara2 = pieza.cara, pieza.adyacente.cara, pieza.precedente.cara
-                c0 = cube_state[cara0][i][j]
-                c1 = cube_state[cara1][ia][ja]
-                c2 = cube_state[cara2][ip][jp]
-                    
-                if self.sentido == 1: # ha girado a la izquierda
-                    cube_state[cara0][i][j] = c2
-                    cube_state[cara1][ia][ja] = c0
-                    cube_state[cara2][ip][jp] = c1
-                    orb.flippear_esquina(self.cubo, (i,j), self.sentido)
-                    
-                elif self.sentido == 2: # ha girado a la derecha
-                    cube_state[cara0][i][j] = c1
-                    cube_state[cara1][ia][ja] = c2
-                    cube_state[cara2][ip][jp] = c0
-                    orb.flippear_esquina(self.cubo, (i,j), self.sentido)
+                coords1 = [(cara1, i1, j1), (cara1a, i1a, j1a)]
+                coords2 = [(cara2, i2, j2), (cara2a, i2a, j2a)]
 
+                for k in (0, 1):
+                    color1 = self.piezas_transmutadas[0][k]
+                    color2 = self.piezas_transmutadas[1][k]
+
+                    for cara, i, j in coords1:
+                        if cube_state[cara][i][j] == color1:
+                            pos1 = (cara, i, j)
+                            break
+
+                    for cara, i, j in coords2:
+                        if cube_state[cara][i][j] == color2:
+                            pos2 = (cara, i, j)
+                            break
+
+                    temp = cube_state[pos1[0]][pos1[1]][pos1[2]]
+                    cube_state[pos1[0]][pos1[1]][pos1[2]] = cube_state[pos2[0]][pos2[1]][pos2[2]]
+                    cube_state[pos2[0]][pos2[1]][pos2[2]] = temp
+
+                # Actualizar el cubo lógico tras el intercambio
+                self.cubo = orb.intercambiar_aristas(self.cubo, self.piezas_transmutadas[0], self.piezas_transmutadas[1])
                 asignar_color_deuna(self.cubo)
-                self.cube3DView.update()
-                self.parent().parent().get_cubenet().drawNet()
+                    
+        # --- Flip de la pieza cambiada ---
+        if self.piecita_cambiada is not None:
+            print("Piezas flippeadas:", self.piecita_cambiada)
+            for colores in self.piecita_cambiada:
+                if len(colores) == 2:
+                    # 1) Localiza la arista en el modelo
+                    pieza = orb.buscar_posicion_por_color_arista(self.cubo, colores)
+                    if not pieza:
+                        continue
 
-            self.flip_shown = True
-            self.updateStep()
-            return
+                    # 2) Prepara coords de los dos stickers de la arista
+                    coords = [
+                        (pieza.cara,        pieza.fila,        pieza.columna),
+                        (pieza.adyacente.cara, pieza.adyacente.fila, pieza.adyacente.columna)
+                    ]
 
-        # ------------------------------------------------
-        # 1) Pasos canónicos: aplicar uno por uno
-        # ------------------------------------------------
+                    # 3) Encuentra en qué posición está cada color
+                    #    (aunque aquí flippearás ambas, lo hacemos por consistencia)
+                    pos1 = next((p for p, (c,i,j) in enumerate(coords)
+                                if cube_state[c][i][j] == colores[0]), None)
+                    pos2 = next((p for p, (c,i,j) in enumerate(coords)
+                                if cube_state[c][i][j] == colores[1]), None)
+
+                    # 4) Si ambos encontrados, swap en cube_state
+                    if pos1 is not None and pos2 is not None:
+                        c1, i1, j1 = coords[pos1]
+                        c2, i2, j2 = coords[pos2]
+                        tmp = cube_state[c1][i1][j1]
+                        cube_state[c1][i1][j1] = cube_state[c2][i2][j2]
+                        cube_state[c2][i2][j2] = tmp
+
+                        # 5) Flip en el modelo interno
+                        orb.flippear_arista(self.cubo, (pieza.fila, pieza.columna))
+
+                        # 6) Repinta sólo esa arista para mantener coherencia visual
+                        asignar_color_deuna(self.cubo)
+                else:
+                    # Esquina
+                    pieza = orb.buscar_posicion_por_color_esquina(self.cubo, colores)
+                    if pieza:
+                        # 1) Prepara coords en orden [principal, adyacente, precedente]
+                        coords = [
+                            (pieza.cara,        pieza.fila,        pieza.columna),
+                            (pieza.adyacente.cara, pieza.adyacente.fila, pieza.adyacente.columna),
+                            (pieza.precedente.cara, pieza.precedente.fila, pieza.precedente.columna)
+                        ]
+
+                        # 2) Lee los colores actuales en esa orden
+                        vals = [cube_state[c][r][t] for (c, r, t) in coords]
+
+                        # 3) Genera la nueva lista de valores según el sentido
+                        if self.sentido == 1:
+                            # rotación +1: [2→0, 0→1, 1→2]
+                            new_vals = [vals[2], vals[0], vals[1]]
+                        elif self.sentido == 2:
+                            # rotación -1: [1→0, 2→1, 0→2]
+                            new_vals = [vals[1], vals[2], vals[0]]
+                        else:
+                            raise ValueError("sentido debe ser 1 o 2 para esquinas")
+
+                        # 4) Escribe los stickers en cube_state
+                        for (c, r, t), v in zip(coords, new_vals):
+                            cube_state[c][r][t] = v
+
+                        # 5) Actualiza el modelo interno
+                        orb.flippear_esquina(self.cubo, (pieza.fila, pieza.columna), self.sentido)
+
+                        # 6) Repinta para mantener la vista coherente
+                        asignar_color_deuna(self.cubo)          
+              
+    def nextStep(self):
         if self.current_step < len(self.secuencia_movimientos):
             num_mov = self.historial[self.current_step]
             mov = grafo.nodos[num_mov].movimiento
-            # 2.1) Aplica el giro al cube_state (estado canónico)
+            
+            #aplicar el giro canon
             traducir_a_cubo(mov, cube_state)
-            # 2.2) Repinta el modelo molecular
             asignar_color_deuna(self.cubo)
-            # 2.3) Actualiza vistas
+            
+            # aplicamos los errores de la órbita
+            print("Aplicando errores de órbita...")
+            self.aplicar_errores()
+            
+            # Actualizar la vista 3D
+            asignar_color_deuna(self.cubo)
             self.cube3DView.update()
             self.parent().parent().get_cubenet().drawNet()
-            # 2.4) Avanza contador y refresca texto
+            
+            # avanzar al siguiente paso
             self.current_step += 1
             self.updateStep()
             return
         else:
-            # Ya no hay más movimientos
             self.updateStep()
-            
-        # --- 3) Flip final (devuelve la pieza a la mala órbita) ---
-        if self.flip_shown and not self.flip_end_shown and self.current_step >= len(self.secuencia_movimientos):
-            orb = Orbitas(self.movimiento_origen)
-
-            # Si es arista (2 colores)
-            if isinstance(self.piecita_cambiada, (list, tuple)) and len(self.piecita_cambiada) == 2:
-                pieza = orb.buscar_posicion_por_color_arista(self.cubo, self.piecita_cambiada)
-                if pieza:
-                    i,j = pieza.fila, pieza.columna
-                    cs1 = cube_state[pieza.cara]
-                    cs2 = cube_state[pieza.adyacente.cara]
-                    ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
-                    cs1[i][j], cs2[ia][ja] = cs2[ia][ja], cs1[i][j]
-                    orb.flippear_arista(self.cubo, (i,j))
-
-            # Si es esquina (3 colores)
-            else:
-                pieza = orb.buscar_posicion_por_color_esquina(self.cubo, self.piecita_cambiada)
-                if pieza:
-                    i,j   = pieza.fila, pieza.columna
-                    ia,ja = pieza.adyacente.fila, pieza.adyacente.columna
-                    ip,jp = pieza.precedente.fila, pieza.precedente.columna
-                    cara0, cara1, cara2 = pieza.cara, pieza.adyacente.cara, pieza.precedente.cara
-                    c0 = cube_state[cara0][i][j]
-                    c1 = cube_state[cara1][ia][ja]
-                    c2 = cube_state[cara2][ip][jp]
-                        
-                    if self.sentido == 1: # ha girado a la izquierda, para volver tengo que girar a la derecha
-                        cube_state[cara0][i][j] = c1
-                        cube_state[cara1][ia][ja] = c2
-                        cube_state[cara2][ip][jp] = c0
-                        orb.restaurar_esquina(self.cubo, (i,j), self.sentido)
-                        
-                    elif self.sentido == 2: # ha girado a la derecha, para volver tengo que girar a la izquierda
-                        cube_state[cara0][i][j] = c2
-                        cube_state[cara1][ia][ja] = c0
-                        cube_state[cara2][ip][jp] = c1
-                        orb.restaurar_esquina(self.cubo, (i,j), self.sentido)
-                        
-
-            asignar_color_deuna(self.cubo)
-            self.cube3DView.update()
-            self.parent().parent().get_cubenet().drawNet()
-
-            self.flip_end_shown = True
-            self.updateStep()
-            return
 
     def volverMenu(self):
         parent = self.parent()
@@ -555,6 +549,16 @@ class MainWidget(QWidget):
         self.setWindowTitle(t('welcome', self.lang))  
 
         layout = QVBoxLayout(self)
+        
+        self.paletteBtn = QPushButton("Paleta de colores")
+        self.paletteBtn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.paletteBtn.clicked.connect(self.openPaletteDialog)
+        # lo colocamos en la esquina superior izquierda:
+        hl = QHBoxLayout()
+        hl.addWidget(self.paletteBtn, alignment=Qt.AlignmentFlag.AlignLeft)
+        hl.addStretch()
+        layout.addLayout(hl)
+        
         self.stacked = QStackedWidget()
         self.cubo = iniciar()
 
@@ -606,7 +610,36 @@ class MainWidget(QWidget):
         self.toggleBtn.setText(t('toggle_view', self.lang))
         self.reiniciarBtn.setText(t('reset_cube', self.lang))
         self.shuffleBtn.setText(t('shuffle_cube', self.lang))
+        
+    def openPaletteDialog(self):
+        dlg = PaletteDialog(self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            pal_name = dlg.selected_palette()
+            global ROTATION_INDEX, COLORES_MAPA
 
+            if pal_name == "Rotar":
+                # Avanza el índice y crea una paleta rotada sobre Default
+                ROTATION_INDEX = (ROTATION_INDEX + 1) % len(COLORES)
+                nuevo_mapa = {
+                    key: PALETTES["Default"][ COLORES[(i + ROTATION_INDEX) % len(COLORES)] ]
+                    for i, key in enumerate(COLORES)
+                }
+                COLORES_MAPA = nuevo_mapa
+
+            elif pal_name == "Random":
+                # Genera uno nuevo cada vez
+                COLORES_MAPA = {
+                    c: QColor.fromRgbF(random.random(), random.random(), random.random())
+                    for c in COLORES
+                }
+
+            else:
+                # Cualquiera de las paletas fijas: Default, Pastel, Oscuro, Brillante…
+                COLORES_MAPA = PALETTES[pal_name]
+
+            # Redibuja
+            self.cubeNet.drawNet()
+            self.cube3D.update()
     
     def get_cubenet(self):
         return self.cubeNet
@@ -703,16 +736,25 @@ class MainWidget(QWidget):
                 if count != 9:
                     raise ValueError(t('only_9', self.lang))
 
-            # 3) Sincronizar colores al modelo molecular
+            # 3) Sincronizar colores al modelo molecular y traducimos a movimiento
             asignar_color_deuna(self.cubo)
-
-            # 4) Obtener representación de movimiento y buscar nodo en el grafo
             movimiento = traducir_a_mov(self.cubo)
-            numero_mov = buscar_nodo(movimiento)
-            escenarios = [] # guarda todas las soluciones de las órbitas
 
-            if numero_mov is None:
-                orb = Orbitas(movimiento)
+            # 4) Comprobamos las restricciones del cubo
+            orb = Orbitas(movimiento)
+            restriccion_mod2 = orb.comprobar_restriccion_mod2()
+            restriccion_mod3 = orb.comprobar_restriccion_mod3()
+            restriccion_perm = orb.comprobar_restriccion_perm()
+            piezas_cambiadas = None
+            piezas_transmutadas = None
+            
+            if not restriccion_mod2 or not restriccion_mod3:
+                piezas_cambiadas = []
+            
+            if not restriccion_perm:
+                piezas_transmutadas = []
+            
+            if not restriccion_mod2 or not restriccion_mod3 or not restriccion_perm:
                 
                 # --- Caso “otra órbita” ---
                 self.mostrarMensaje(t('not_found', self.lang))
@@ -725,100 +767,83 @@ class MainWidget(QWidget):
                 corregir = msgBox.addButton(t('correct_cube', self.lang),    QMessageBox.ButtonRole.RejectRole)
                 msgBox.setDefaultButton(corregir)
                 msgBox.exec()
-
+                
                 if msgBox.clickedButton() == aceptar:
+                    nuevo_movimiento = movimiento.copy()
+                    sentido = None
                     
-                    # ---- ARISTAS (mod-2) ----
-                    if not orb.comprobar_restriccion_mod2():
-                        orient2 = orb.opciones_mod2_correcto()  
-                        movs2 = orb.movimientos_opciones()             
-
-                        # Preguntar al usuario si sabe qué arista flippeó:
-                        etiquetas2 = [
-                            f"{i+1}: {orb.buscar_color_por_posicion_arista(o, self.cubo)}"
-                            for i,o in enumerate(orient2)
-                        ] + [t('dontknow', self.lang)]
+                    if not restriccion_mod2:
+                        orient2_buenas = orb.opciones_mod2_correcto()
+                        # escogemos la primera opción para flippear
+                        orient2_elegida = orient2_buenas[0]  
+                        nuevo_movimiento[1] = orient2_elegida
                         
-                        elegido2, ok2 = QInputDialog.getItem(
-                            self,
-                            t('arista_flipped', self.lang),
-                            t('choose_arista_flipped', self.lang),
-                            etiquetas2,
-                            0, False
-                        )
-                        if ok2 and elegido2 != t('dontknow', self.lang):
-                            idx2 = int(elegido2.split(":")[0]) - 1
+                        color2 = orb.buscar_color_por_posicion_arista(orient2_elegida, self.cubo)
+                        piezas_cambiadas.append(color2)
+                        
+                    if not restriccion_mod3:
+                        orient3_buenas = orb.opciones_mod3_correcto()
+                        # escogemos la primera opción para flippear
+                        orient3_elegida = orient3_buenas[0]
+                        nuevo_movimiento[3] = orient3_elegida
+                        
+                        # definimos el sentido de giro
+                        for i in range(len(orient3_elegida)):
+                            if movimiento[3][i] != orient3_elegida[i]:
+                                indice_distinto = i
+                        orient_original = movimiento[3][indice_distinto]
+                        orient_nueva = orient3_elegida[indice_distinto]
+                        cuanto_gira = (orient_nueva - orient_original) % 3
+                        if cuanto_gira == 1:
+                            sentido = 1
+                        elif cuanto_gira == 2:
+                            sentido = 2
                         else:
-                            # “No sé cuál” → elijo aleatoriamente
-                            idx2 = random.randrange(len(orient2))
-                            self.mostrarMensaje(
-                                t('random_solution', self.lang)
-                            )
-                            
-                        sel_mov2 = movs2[idx2]
-                        sel_ori2 = orient2[idx2]
-                        seq2, hist2 = buscar_identidad(buscar_nodo(sel_mov2))
-                        col2 = orb.buscar_color_por_posicion_arista(sel_ori2, self.cubo)
-                        sentido = None # las aristas no tienen sentido
-                        escenarios.append((seq2, hist2, col2, sel_mov2, sentido))
-
-                # -----ESQUINAS (mod-3) -----
-                if not orb.comprobar_restriccion_mod3():
-                    orient3 = orb.opciones_mod3_correcto()  
-                    movs3   = orb.movimientos_opciones_esquinas() 
-
-                    etiquetas3 = [
-                            f"{i+1}: {orb.buscar_color_por_posicion_esquina(o3, self.cubo)}"
-                            for i, o3 in enumerate(orient3)
-                        ] + [t('dontknow')]
-                    
-                    elegido3, ok3 = QInputDialog.getItem(
-                            self, t('esquina_flipped', self.lang),
-                            t('choose_esquina_flipped', self.lang),
-                            etiquetas3, 0, False
-                        )
-
-                    if ok3 and elegido3 != t('dontknow', self.lang):
-                        idx3 = int(elegido3.split(":")[0]) - 1
-                    else:
-                        idx3 = random.randrange(len(orient3))
-                        self.mostrarMensaje(
-                            t('random_solution_esquina', self.lang)
-                        )
+                            sentido = None
                         
-                    sel_mov3 = movs3[idx3]
-                    sel_ori3 = orient3[idx3]
-                    # definimos el sentido de giro
-                    orient_original = movimiento[3][idx3]
-                    orient_nueva = sel_ori3[idx3]
-                    cuanto_gira = (orient_nueva - orient_original) % 3
-                    print(f"cuanto_gira: {cuanto_gira}")    
-                    if cuanto_gira == 1:
-                        sentido = 1
-                    elif cuanto_gira == 2:
-                        sentido = 2
-                    else:
-                        sentido = None                        
-                    seq3, hist3 = buscar_identidad(buscar_nodo(sel_mov3))
-                    col3 = orb.buscar_color_por_posicion_esquina(sel_ori3, self.cubo)
-                    escenarios.append((seq3, hist3, col3, sel_mov3, sentido))
+                        color3 = orb.buscar_color_por_posicion_esquina(orient3_elegida, self.cubo)
+                        piezas_cambiadas.append(color3)
+                              
+                    if not restriccion_perm:
+                        # intercambiamos dos aristas
+                        eleccion = 0
+                        nueva_perm = orb.cambiar_paridad(eleccion)
+                        print("nueva permutación elegida:", nueva_perm)
+                        nuevo_movimiento[eleccion] = nueva_perm
+                        piezas_transmutadas = orb.buscar_piezas_transmutadas(nueva_perm, eleccion)
+                    
+                        
+                    self.mostrarMensaje(t('random_solution', self.lang))
+                    secuencia, historial = buscar_identidad(buscar_nodo(nuevo_movimiento))
+                    self.solutionWidget = SolutionWidget(
+                        secuencia_movimientos=secuencia,
+                        historial=historial,
+                        piecita_cambiada=piezas_cambiadas,
+                        piezas_transmutadas=piezas_transmutadas,
+                        sentido=sentido,
+                        cubo_modelo=self.cubo,
+                        movimiento_origen=movimiento,
+                        lang=self.lang
+                    )
+                    self.stacked.addWidget(self.solutionWidget)
+                    self.stacked.setCurrentWidget(self.solutionWidget)
 
+                    # desactivar botones inferiores
+                    for btn in (self.toggleBtn, self.shuffleBtn,
+                                self.reiniciarBtn, self.solucionarBtn):
+                        btn.setEnabled(False)
+            
             else:
                 # --- Caso canónico sin flips ---
-                mov_can = grafo.nodos[numero_mov].movimiento
-                seq_can, hist_can = buscar_identidad(numero_mov)
-                sentido = None # no se ha flippeado nada
-                escenarios = [(seq_can, hist_can, None, mov_can, sentido)]
-
-            if escenarios:
-                seq, hist, pieza, mov_orig, sentido = escenarios[0]
+                secuencia, historial = buscar_identidad(buscar_nodo(movimiento))
                 self.solutionWidget = SolutionWidget(
-                    secuencia_movimientos=seq,
-                    historial=hist,
-                    piecita_cambiada=pieza,
-                    sentido=sentido,
+                    secuencia_movimientos=secuencia,
+                    historial=historial,
+                    piecita_cambiada=None,
+                    piezas_transmutadas=None,
+                    sentido=None,
                     cubo_modelo=self.cubo,
-                    movimiento_origen=mov_orig,
+                    movimiento_origen=movimiento,
                     lang=self.lang
                 )
                 self.stacked.addWidget(self.solutionWidget)
@@ -828,14 +853,30 @@ class MainWidget(QWidget):
                 for btn in (self.toggleBtn, self.shuffleBtn,
                             self.reiniciarBtn, self.solucionarBtn):
                     btn.setEnabled(False)
-
-                
-            
+           
+                 
         except Exception as e:
             traceback.print_exc()
             self.mostrarMensaje(f"Error al resolver: {e.__class__.__name__}: {e}")
             return None
+        
+class PaletteDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Selecciona paleta")
+        v = QVBoxLayout(self)
+        self.combo = QComboBox()
+        self.combo.addItems(["Default", "Rotar", "Pastel", "Oscuro",
+                     "Brillante", "Random"])
+        v.addWidget(self.combo)
+        btn = QPushButton("Aplicar")
+        btn.clicked.connect(self.accept)
+        v.addWidget(btn)
 
+    def selected_palette(self):
+        return self.combo.currentText()
+                      
+                
 class MainMenuWidget(QWidget):
     def __init__(self, lang, main_container):
         super().__init__()
@@ -1020,7 +1061,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.mainContainer = MainContainer()
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(800, 700)
         self.setCentralWidget(self.mainContainer)
     
     def get_mainwidget(self):

@@ -192,45 +192,69 @@ class Orbitas:
             return False
         
     def intercambiar_aristas(self, cubo, colores1, colores2):
-        """
-        Intercambia en el modelo molecular los stickers de dos aristas, 
-        emparejando cada color de colores1 con el correspondiente de colores2.
-        """
+        # Intercambio los colores blancos entre ellos y los colores que no son blancos entre ellos
         pieza1 = self.buscar_posicion_por_color_arista(cubo, colores1)
         pieza2 = self.buscar_posicion_por_color_arista(cubo, colores2)
-        
         if not (pieza1 and pieza2):
             print("No se han encontrado las aristas a intercambiar")
             return None
-
-        # Lista de (molecula, atributo) para iterar sobre los dos stickers de cada arista
-        stickers1 = [(pieza1, 'color'), (pieza1.adyacente, 'color')]
-        stickers2 = [(pieza2, 'color'), (pieza2.adyacente, 'color')]
-
-        # Para cada índice 0 y 1, empareja colores1[k] con colores2[k]
-        for k in (0, 1):
-            c1_target = colores1[k]
-            c2_target = colores2[k]
-
-            # Busca en cuál sticker de la pieza1 está c1_target
-            for obj, attr in stickers1:
-                if getattr(obj, attr) == c1_target:
-                    sticker1_obj, sticker1_attr = obj, attr
-                    break
-
-            # Busca en cuál sticker de la pieza2 está c2_target
-            for obj, attr in stickers2:
-                if getattr(obj, attr) == c2_target:
-                    sticker2_obj, sticker2_attr = obj, attr
-                    break
-
-            # Intercambia valores
-            temp = getattr(sticker1_obj, sticker1_attr)
-            setattr(sticker1_obj, sticker1_attr, getattr(sticker2_obj, sticker2_attr))
-            setattr(sticker2_obj, sticker2_attr, temp)
-
-        return cubo
+        stiker1_pieza1 = pieza1.color
+        stiker2_pieza1 = pieza1.adyacente.color
+        stiker1_pieza2 = pieza2.color
+        stiker2_pieza2 = pieza2.adyacente.color
+        # Identifico que pieza es la blanca y que pieza es la de otro color
+        if stiker1_pieza1 == "B":
+            color_blanco1 = 'color'
+            color_noblanco1 = 'adyacente'
+            valor_blanco1 = stiker1_pieza1
+            valor_noblanco1 = stiker2_pieza1
+        elif stiker2_pieza1 == "B":
+            color_blanco1 = 'adyacente'
+            color_noblanco1 = 'color'
+            valor_blanco1 = stiker2_pieza1
+            valor_noblanco1 = stiker1_pieza1
         
+        # Hacemos lo mismo en la otra pieza 
+        if stiker1_pieza2 == "B":
+            color_blanco2 = 'color'
+            color_noblanco2 = 'adyacente'
+            valor_blanco2 = stiker1_pieza2
+            valor_noblanco2 = stiker2_pieza2
+        elif stiker2_pieza2 == "B":
+            color_blanco2 = 'adyacente'
+            color_noblanco2 = 'color'
+            valor_blanco2 = stiker2_pieza2
+            valor_noblanco2 = stiker1_pieza2
+            
+        # Intercambiamos los colores blancos
+        if color_blanco1 and color_blanco2:
+            # guardo temporalmente el stiker blanco de la primera pieza
+            temp_blanco = valor_blanco1
+            if color_blanco1 == 'color':
+                pieza1.color = valor_blanco2
+            else:
+                pieza1.adyacente.color = valor_blanco2
+                
+            if color_blanco2 == 'color':
+                pieza2.color = temp_blanco
+            else:
+                pieza2.adyacente.color = temp_blanco
+                
+        # intercambiamos los colores que no son blancos
+        if color_noblanco1 and color_noblanco2:
+            # guardo temporalmente el stiker no blanco de la primera pieza
+            temp_noblanco = valor_noblanco1
+            if color_noblanco1 == 'color':
+                pieza1.color = valor_noblanco2
+            else:
+                pieza1.adyacente.color = valor_noblanco2
+                
+            if color_noblanco2 == 'color':
+                pieza2.color = temp_noblanco
+            else:
+                pieza2.adyacente.color = temp_noblanco
+        return cubo
+    
     def intercambiar_esquinas(self, cubo, colores1, colores2):
         """
         Intercambia dos esquinas en el modelo molecular,

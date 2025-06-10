@@ -19,7 +19,7 @@ TRADUCCIONES = {
         'next_step':       'Siguiente paso',
         'goto_menu':       'Volver al menú',
         'solution_complete': '¡Solución completada!',
-        'solution_complete_orbit': '¡Solución de órbita completada! No se puede acercar más a la solución.',
+        'solution_complete_orbit': '¡Solución con piezas descolocadas completada! No se puede acercar más a la solución.',
         'cube_shuffled':   'Cubo mezclado',
         'already_solved':  'El cubo ya está solucionado. No se puede reiniciar',
         'cube_reset':      'Cubo reiniciado',
@@ -40,6 +40,11 @@ TRADUCCIONES = {
         'select_lenguage': 'Selecciona el idioma',
         'lenguage':        'Idioma',
         'lenguage_selected': 'Idioma seleccionado',
+        'color_palette': 'Paleta de colores',
+        'select_palette': 'Selecciona la paleta de colores',
+        'tipos_paleta': ["Default", "Rotar", "Pastel", "Oscuro",
+                     "Brillante", "Random"],
+        'aplicar': 'Aplicar',
         'about_text':      "Acerca de Cubo Rubik"
                             "<b>Cubo Rubik App</b><br>Versión 1.0<br>Desarrollado por RanaCGames<br>"
                             "Este programa te permite resolver la última cara de un cubo Rubik de forma interactiva.<br>"
@@ -422,7 +427,7 @@ TRADUCCIONES = {
         'next_step':       'Next Step',
         'goto_menu':       'Return to Menu',
         'solution_complete': 'Solution Complete!',
-        'solution_complete_orbit': 'Orbit solution complete! Cannot get closer to the solution.',
+        'solution_complete_orbit': 'Solution with misplaced pieces completed! Cannot get any closer to the solution.',
         'cube_shuffled':   'Cube Shuffled',
         'already_solved':  'The cube is already solved. Cannot restart',
         'cube_reset':      'Cube Reset',
@@ -443,6 +448,10 @@ TRADUCCIONES = {
         'select_lenguage': 'Select Language',
         'lenguage':        'Language',
         'lenguage_selected': 'Language Selected',
+        'color_palette': 'Color Palette',
+        'select_palette': 'Select Color Palette',
+        'tipos_paleta': ["Default", "Rotate", "Pastel", "Dark", "Bright", "Random"],
+        'aplicar': 'Apply',
         'about_text':      "About the Rubik Cube" \
                             "<b>Rubik Cube App</b><br>Version 1.0<br>Developed by RanaCGames<br>" \
                             "This program allows you to solve the last face of a Rubik's Cube interactively.<br>" \
@@ -794,7 +803,7 @@ TRADUCCIONES = {
         'next_step':       'Passo successivo',
         'goto_menu':       'Torna al menu',
         'solution_complete': 'Soluzione completata!',
-        'solution_complete_orbit': 'Soluzione dell\'orbita completata! Non è possibile avvicinarsi di più alla soluzione.',
+        'solution_complete_orbit': 'Soluzione completata con i pezzi fuori posto! Non è possibile avvicinarsi di più alla soluzione.',
         'cube_shuffled':   'Cubo mescolato',
         'already_solved':  'Il cubo è già risolto. Impossibile reinizializzarlo',
         'cube_reset':      'Cubo reimpostato',
@@ -815,6 +824,10 @@ TRADUCCIONES = {
         'select_lenguage': 'Seleziona la lingua',
         'lenguage':        'Lingua',
         'lenguage_selected': 'Lingua selezionata',
+        'color_palette': 'Palette di Colori',
+        'select_palette': 'Seleziona la tavolozza dei colori',
+        'tipos_paleta': ["Predefinito", "Ruota", "Pastello", "Scuro","Brillante", 'Casuale'],
+        'aplicar': 'Applica',
         'about_text':      "Informazioni sul Cubo di Rubik" \
                             "<b>App Cubo di Rubik</b><br>Versione 1.0<br>Sviluppato da RanaCGames<br>" \
                             "Questo programma ti permette di risolvere l'ultima faccia di un Cubo di Rubik in modo interattivo.<br>" \
@@ -1356,7 +1369,7 @@ TRADUCCIONES = {
         'next_step':       'Nächster Schritt',
         'goto_menu':       'Zum Menü zurück',
         'solution_complete': 'Lösung abgeschlossen!',
-        'solution_complete_orbit': 'Orbit-Lösung abgeschlossen! Näher kommen Sie der Lösung nicht.',
+        'solution_complete_orbit': 'Lösung mit falsch platzierten Teilen abgeschlossen! Einer Lösung kann man nicht näher kommen.',
         'cube_shuffled':   'Würfel gemischt',
         'already_solved':  'Der Würfel ist bereits gelöst. Ein Neustart ist nicht möglich',
         'cube_reset':      'Würfel zurückgesetzt',
@@ -1377,6 +1390,10 @@ TRADUCCIONES = {
         'select_lenguage': 'Sprache auswählen',
         'lenguage':        'Sprache',
         'lenguage_selected': 'Sprache ausgewählt',
+        'color_palette': 'Farbpalette',
+        'select_palette': 'Wählen Sie die Farbpalette aus',
+        'tipos_paleta': ["Standard", "Drehen", "Pastell", "Dunkel", "Brillant", "Zufällig"],
+        'aplicar': 'Bewerben',
         'about_text':      "Über den Rubik's Cube" \
                             "<b>Rubik's Cube App</b><br>Version 1.0<br>Entwickelt von RanaCGames<br>" \
                             "Dieses Programm ermöglicht es dir, die letzte Fläche eines Rubik's Cube interaktiv zu lösen.<br>" \
@@ -1749,7 +1766,7 @@ TRADUCCIONES = {
         'next_step':       'Étape suivante',
         'goto_menu':       'Retour au menu',
         'solution_complete': 'Solution terminée !',
-        'solution_complete_orbit': 'Solution Orbit terminée ! Vous ne pouvez pas être plus proche de la solution.',
+        'solution_complete_orbit': 'Solution avec des pièces mal placées terminée ! Vous ne pouvez pas être plus proche d’une solution.',
         'cube_shuffled':   'Cube mélangé',
         'already_solved':  'Le cube est déjà résolu. Impossible de réinitialiser',
         'cube_reset':      'Cube réinitialisé',
@@ -1770,6 +1787,10 @@ TRADUCCIONES = {
         'select_lenguage': 'Sélectionnez la langue',
         'lenguage':        'Langue',
         'lenguage_selected': 'Langue sélectionnée',
+        'color_palette': 'Palette de couleurs',
+        'select_palette': 'Sélectionnez la palette de couleurs',
+        'tipos_paleta': ["Standard", "Rotation", "Pastel", "Sombre", "Brillant", "Aléatoire"],
+        'aplicar': 'Appliquer',
         'about_text':      "À propos du Rubik's Cube" \
                             "<b>Application Rubik's Cube</b><br>Version 1.0<br>Développé par RanaCGames<br>" \
                             "Ce programme vous permet de résoudre la dernière face d'un Rubik's Cube de manière interactive.<br>" \

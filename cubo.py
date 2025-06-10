@@ -60,7 +60,27 @@ def iniciar():
     cubo[2][1] = Arista("B", 2, 1, "B", Molecula("N", 0, 1, "N"))
     cubo[2][2] = Vertice("B", 2, 2, "B", Molecula("N", 0, 2, "N"), Molecula("V", 2, 0, "V"))
     
+    #pintar_cubo(cubo)
+    
     return cubo
+
+def pintar_cubo(cubo):
+    for i in range(3):
+        for j in range(3):
+            pieza = cubo[i][j]
+            if isinstance(pieza, Molecula):
+                cara = pieza.cara
+                fila = pieza.fila
+                columna = pieza.columna
+                color = pieza.color
+                adyacente = pieza.adyacente
+                precedente = None
+                if isinstance(pieza, Vertice):
+                    precedente = pieza.precedente
+                    print(f"Esquina en cara '{cara}' en posición ({fila}, {columna}) con color '{color}', adyacente en cara '{adyacente.cara}' con color '{adyacente.color}' y precedente en cara '{precedente.cara}', color '{precedente.color}'")
+                else:
+                    print(f"Esquina en cara '{cara}' en posición ({fila}, {columna}) con color '{color}', adyacente en cara '{adyacente.cara}' con color '{adyacente.color}'")
+                
 
 
 def indice_arista_resuelta(pieza):
