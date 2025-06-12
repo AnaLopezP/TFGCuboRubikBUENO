@@ -5,7 +5,7 @@ Este repositorio almacena todos los archivos necesarios para crear la aplicació
 A continuación se explica la estructura del codigo de manera general
 
 ## Grafo
-Este archivo contiene toda la lógica relacionada con la creación de la ley de grupo (leer, guardar y operar los movimientos), y la creación del grafo, además de la búsqueda de la identidad en el mismo. 
+Este archivo contiene toda la lógica relacionada con la creación de la ley de grupo (leer, guardar y operar los movimientos), y la creación del grafo, además de la búsqueda de la identidad en el mismo. Este grafo se almacena en el archivo grafo_final.csv. Además, el grafo se crea a partior de los movimientos generadores movimientos_iniciales.csv
 
 ## App Buena
 Aquí se implementó toda la lógica de la aplicación (interfaces, botones, etc.), tanto en el cubo 2D como en el 3D. Para conectar la aplicación con la lógica de resolución, se crearon los archivos siguientes.
